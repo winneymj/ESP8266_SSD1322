@@ -537,61 +537,53 @@ void Adafruit_SSD1322::ssd1322_data(uint8_t c) {
 }
 
 void Adafruit_SSD1322::display(void) {
-	ssd1322_command(SSD1322_COLUMNADDR);
-	ssd1322_command(0);   // Column start address (0 = reset)
-	ssd1322_command(SSD1322_LCDWIDTH - 1); // Column end address (127 = reset)
-
-	ssd1322_command(SSD1322_PAGEADDR);
-	ssd1322_command(0); // Page start address (0 = reset)
-#if SSD1322_LCDHEIGHT == 64
-	ssd1322_command(7); // Page end address
-#endif
-#if SSD1322_LCDHEIGHT == 32
-	ssd1322_command(3); // Page end address
-#endif
-#if SSD1322_LCDHEIGHT == 16
-	ssd1322_command(1); // Page end address
-#endif
-
-	if (sid != -1) {
-		// SPI
-		*csport |= cspinmask;
-		*dcport |= dcpinmask;
-		*csport &= ~cspinmask;
-
-		for (uint16_t i = 0; i < (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 8);
-				i++) {
-			fastSPIwrite (buffer[i]);
-			//ssd1306_data(buffer[i]);
-		}
-		*csport |= cspinmask;
-	} else {
-		// save I2C bitrate
-#ifndef __SAM3X8E__
-		uint8_t twbrbackup = TWBR;
-		TWBR = 12; // upgrade to 400KHz!
-#endif
-
-		//Serial.println(TWBR, DEC);
-		//Serial.println(TWSR & 0x3, DEC);
-
-		// I2C
-		for (uint16_t i = 0; i < (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 8);
-				i++) {
-			// send a bunch of data in one xmission
-			Wire.beginTransmission(_i2caddr);
-			WIRE_WRITE(0x40);
-			for (uint8_t x = 0; x < 16; x++) {
-				WIRE_WRITE(buffer[i]);
-				i++;
-			}
-			i--;
-			Wire.endTransmission();
-		}
-#ifndef __SAM3X8E__
-		TWBR = twbrbackup;
-#endif
-	}
+//	ssd1322_command(SSD1322_SETCOLUMNADDR);
+//	ssd1322_command(0);   // Column start address (0 = reset)
+//	ssd1322_command(SSD1322_LCDWIDTH - 1); // Column end address (127 = reset)
+//
+//	ssd1322_command(SSD1322_PAGEADDR);
+//	ssd1322_command(0); // Page start address (0 = reset)
+//#if SSD1322_LCDHEIGHT == 64
+//	ssd1322_command(7); // Page end address
+//#endif
+//#if SSD1322_LCDHEIGHT == 32
+//	ssd1322_command(3); // Page end address
+//#endif
+//#if SSD1322_LCDHEIGHT == 16
+//	ssd1322_command(1); // Page end address
+//#endif
+//
+//	if (sid != -1) {
+//		// SPI
+//		*csport |= cspinmask;
+//		*dcport |= dcpinmask;
+//		*csport &= ~cspinmask;
+//
+//		for (uint16_t i = 0; i < (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 8);
+//				i++) {
+//			fastSPIwrite (buffer[i]);
+//			//ssd1306_data(buffer[i]);
+//		}
+//		*csport |= cspinmask;
+//	} else {
+//		// save I2C bitrate
+//		//Serial.println(TWBR, DEC);
+//		//Serial.println(TWSR & 0x3, DEC);
+//
+//		// I2C
+//		for (uint16_t i = 0; i < (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 8);
+//				i++) {
+//			// send a bunch of data in one xmission
+//			Wire.beginTransmission(_i2caddr);
+//			WIRE_WRITE(0x40);
+//			for (uint8_t x = 0; x < 16; x++) {
+//				WIRE_WRITE(buffer[i]);
+//				i++;
+//			}
+//			i--;
+//			Wire.endTransmission();
+//		}
+//	}
 }
 
 // clear everything

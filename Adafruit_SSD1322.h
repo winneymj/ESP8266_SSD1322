@@ -15,8 +15,6 @@ Written by Limor Fried/Ladyada  for Adafruit Industries.
 BSD license, check license.txt for more information
 All text above, and the splash screen must be included in any redistribution
 *********************************************************************/
-#include <stdint.h>
-#include <stdlib.h>
 
 #if ARDUINO >= 100
  #include "Arduino.h"
@@ -82,6 +80,11 @@ All text above, and the splash screen must be included in any redistribution
 #define SSD1322_NORMALDISPLAY 0xA6
 #define SSD1322_INVERSEDISPLAY 0xA7
 #define SSD1322_SETMUXRATIO 0xCA
+#define SSD1322_SETCOLUMNADDR 0x15
+#define SSD1322_SETROWADDR 0x75
+
+#define MIN_SEG	0x1C
+#define MAX_SEG	0x5B
 
 
   /*
