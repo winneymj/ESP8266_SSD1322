@@ -15,6 +15,8 @@ Written by Limor Fried/Ladyada  for Adafruit Industries.
 BSD license, check license.txt for more information
 All text above, and the splash screen must be included in any redistribution
 *********************************************************************/
+#include <stdint.h>
+#include <stdlib.h>
 
 #if ARDUINO >= 100
  #include "Arduino.h"
@@ -50,47 +52,45 @@ All text above, and the splash screen must be included in any redistribution
     Select the appropriate display below to create an appropriately
     sized framebuffer, etc.
 
-    SSD1322_128_64  128x64 pixel display
-
-    SSD1322_128_32  128x32 pixel display
-
-    SSD1322_96_16
+    SSD1322_256_64  256x64 pixel display
 
     -----------------------------------------------------------------------*/
-   #define SSD1322_128_64
-//   #define SSD1322_128_32
-//   #define SSD1322_96_16
+   #define SSD1322_256_64
 /*=========================================================================*/
 
-#if defined SSD1322_128_64 && defined SSD1322_128_32
-  #error "Only one SSD1322 display can be specified at once in SSD1322.h"
-#endif
-#if !defined SSD1322_128_64 && !defined SSD1322_128_32 && !defined SSD1322_96_16
-  #error "At least one SSD1322 display must be specified in SSD1322.h"
-#endif
-
-#if defined SSD1322_128_64
-  #define SSD1322_LCDWIDTH                  128
+#if defined SSD1322_256_64
+  #define SSD1322_LCDWIDTH                  256
   #define SSD1322_LCDHEIGHT                 64
 #endif
-#if defined SSD1322_128_32
-  #define SSD1322_LCDWIDTH                  128
-  #define SSD1322_LCDHEIGHT                 32
-#endif
-#if defined SSD1322_96_16
-  #define SSD1322_LCDWIDTH                  96
-  #define SSD1322_LCDHEIGHT                 16
-#endif
 
+#define SSD1322_SETCOMMANDLOCK 0xFD
+#define SSD1322_DISPLAYOFF 0xAE
+#define SSD1322_DISPLAYON 0xAF
+#define SSD1322_SETCLOCKDIVIDER 0xB3
+#define SSD1322_SETDISPLAYOFFSET 0xA2
+#define SSD1322_SETSTARTLINE 0xA1
+#define SSD1322_SETREMAP 0xA0
+#define SSD1322_FUNCTIONSEL 0xAB
+#define SSD1322_DISPLAYENHANCE 0xB4
+#define SSD1322_SETCONTRASTCURRENT 0xC1
+#define SSD1322_MASTERCURRENTCONTROL 0xC7
+#define SSD1322_SETPHASELENGTH 0xB1
+#define SSD1322_DISPLAYENHANCEB 0xD1
+#define SSD1322_SETPRECHARGEVOLTAGE 0xBB
+#define SSD1322_SETSECONDPRECHARGEPERIOD 0xB6
+#define SSD1322_SETVCOMH 0xBE
+#define SSD1322_NORMALDISPLAY 0xA6
+#define SSD1322_INVERSEDISPLAY 0xA7
+#define SSD1322_SETMUXRATIO 0xCA
+
+
+  /*
 #define SSD1322_SETCONTRAST 0x81
 #define SSD1322_DISPLAYALLON_RESUME 0xA4
 #define SSD1322_DISPLAYALLON 0xA5
 #define SSD1322_NORMALDISPLAY 0xA6
 #define SSD1322_INVERTDISPLAY 0xA7
-#define SSD1322_DISPLAYOFF 0xAE
-#define SSD1322_DISPLAYON 0xAF
 
-#define SSD1322_SETDISPLAYOFFSET 0xD3
 #define SSD1322_SETCOMPINS 0xDA
 
 #define SSD1322_SETVCOMDETECT 0xDB
@@ -103,7 +103,6 @@ All text above, and the splash screen must be included in any redistribution
 #define SSD1322_SETLOWCOLUMN 0x00
 #define SSD1322_SETHIGHCOLUMN 0x10
 
-#define SSD1322_SETSTARTLINE 0x40
 
 #define SSD1322_MEMORYMODE 0x20
 #define SSD1322_COLUMNADDR 0x21
@@ -118,7 +117,7 @@ All text above, and the splash screen must be included in any redistribution
 
 #define SSD1322_EXTERNALVCC 0x1
 #define SSD1322_SWITCHCAPVCC 0x2
-
+*/
 // Scrolling #defines
 #define SSD1322_ACTIVATE_SCROLL 0x2F
 #define SSD1322_DEACTIVATE_SCROLL 0x2E
@@ -128,15 +127,15 @@ All text above, and the splash screen must be included in any redistribution
 #define SSD1322_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL 0x29
 #define SSD1322_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL 0x2A
 
-class ESP8266_SSD1322 : public Adafruit_GFX {
+class Adafruit_SSD1322 : public Adafruit_GFX {
  public:
-  ESP8266_SSD1322(int8_t SID, int8_t SCLK, int8_t DC, int8_t RST, int8_t CS);
-  ESP8266_SSD1322(int8_t DC, int8_t RST, int8_t CS);
-  ESP8266_SSD1322(int8_t RST);
+  Adafruit_SSD1322(int8_t SID, int8_t SCLK, int8_t DC, int8_t RST, int8_t CS);
+  Adafruit_SSD1322(int8_t DC, int8_t RST, int8_t CS);
+  Adafruit_SSD1322(int8_t RST);
 
-  void begin(uint8_t switchvcc = SSD1322_SWITCHCAPVCC, uint8_t i2caddr = SSD1322_I2C_ADDRESS, bool reset=true);
-  void ssd1306_command(uint8_t c);
-  void ssd1306_data(uint8_t c);
+  void begin(uint8_t i2caddr = SSD1322_I2C_ADDRESS, bool reset=true);
+  void ssd1322_command(uint8_t c);
+  void ssd1322_data(uint8_t c);
 
   void clearDisplay(void);
   void invertDisplay(uint8_t i);
@@ -157,7 +156,7 @@ class ESP8266_SSD1322 : public Adafruit_GFX {
   virtual void drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
 
  private:
-  int8_t _i2caddr, _vccstate, sid, sclk, dc, rst, cs;
+  int8_t _i2caddr, sid, sclk, dc, rst, cs;
   void fastSPIwrite(uint8_t c);
 
   boolean hwSPI;
