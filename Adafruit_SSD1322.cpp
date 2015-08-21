@@ -29,6 +29,10 @@
 
 // the memory buffer for the LCD
 
+static uint8_t buffer[SSD1322_LCDHEIGHT * SSD1322_LCDWIDTH / 2] = { 0x00 };
+//static uint8_t buffer[SSD1322_LCDHEIGHT * SSD1322_LCDWIDTH / 8] = { 0xFF };
+
+/*
 static uint8_t buffer[SSD1322_LCDHEIGHT * SSD1322_LCDWIDTH / 8] = { 0xFF, 0xFF,
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -201,7 +205,30 @@ static uint8_t buffer[SSD1322_LCDHEIGHT * SSD1322_LCDWIDTH / 8] = { 0xFF, 0xFF,
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+*/
+void Adafruit_SSD1322::drawPixel(int16_t x, int16_t y, uint16_t gscale) {
+	if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
+		return;
+/*
+	int16_t bytePos = (x >> 1) + (y * (SSD1322_LCDWIDTH / 2));
+	int8_t val = (x % 2) ? color : color << 4;
 
+
+	Serial.print("x=");
+	Serial.println(x);
+	Serial.print("y=");
+	Serial.println(y);
+	Serial.print("bytePos=");
+	Serial.println(bytePos);
+	Serial.print("MSB/LSB=");
+	Serial.println((x % 2) ? "LSB" : "MSB");
+*/
+	buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))] |= ((x % 2) ? gscale : gscale << 4);
+
+
+
+}
+/*
 // the most basic function, set a single pixel
 void Adafruit_SSD1322::drawPixel(int16_t x, int16_t y, uint16_t color) {
 	if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
@@ -239,7 +266,7 @@ void Adafruit_SSD1322::drawPixel(int16_t x, int16_t y, uint16_t color) {
 	}
 
 }
-
+*/
 Adafruit_SSD1322::Adafruit_SSD1322(int8_t SID, int8_t SCLK, int8_t DC,
 		int8_t RST, int8_t CS) :
 		Adafruit_GFX(SSD1322_LCDWIDTH, SSD1322_LCDHEIGHT) {
@@ -251,7 +278,7 @@ Adafruit_SSD1322::Adafruit_SSD1322(int8_t SID, int8_t SCLK, int8_t DC,
 	hwSPI = false;
 }
 
-// constructor for hardware SPI - we indicate DataCommand, ChipSelect, Reset 
+// constructor for hardware SPI - we indicate DataCommand, ChipSelect, Reset
 Adafruit_SSD1322::Adafruit_SSD1322(int8_t DC, int8_t RST, int8_t CS) :
 		Adafruit_GFX(SSD1322_LCDWIDTH, SSD1322_LCDHEIGHT) {
 	dc = DC;
@@ -266,6 +293,10 @@ Adafruit_SSD1322::Adafruit_SSD1322(int8_t reset) :
 	sclk = dc = cs = sid = -1;
 	rst = reset;
 }
+
+/* ------------------------------------------------------------
+
+------------------------------------------------------------ */
 
 void Adafruit_SSD1322::begin(uint8_t i2caddr, bool reset) {
 	_i2caddr = i2caddr;
@@ -311,77 +342,85 @@ void Adafruit_SSD1322::begin(uint8_t i2caddr, bool reset) {
 #endif
 	}
 
-	if (reset) {
+	if (reset)
+	{
 		// Setup reset pin direction (used by both SPI and I2C)
 		pinMode(rst, OUTPUT);
-		digitalWrite(rst, HIGH);
-		// VDD (3.3V) goes high at start, lets just chill for a ms
-		delay(1);
-		// bring reset low
-		digitalWrite(rst, LOW);
-		// wait 10ms
-		delay(10);
 		// bring out of reset
 		digitalWrite(rst, HIGH);
-		// turn on VCC (9V?)
+		delay(100);
+		// bring reset low
+		digitalWrite(rst, LOW);
+		delay(400);
+		// bring out of reset
+		digitalWrite(rst, HIGH);
 	}
 
 #if defined SSD1322_256_64
 
-	// Init sequence for 256x64 OLED module
 	ssd1322_command(SSD1322_SETCOMMANDLOCK);// 0xFD
-	ssd1322_command(0x12);// Unlock OLED driver IC
+	ssd1322_data(0x12);// Unlock OLED driver IC
 
 	ssd1322_command(SSD1322_DISPLAYOFF);// 0xAE
 
 	ssd1322_command(SSD1322_SETCLOCKDIVIDER);// 0xB3
-	ssd1322_command(0x91);// 0xB3
+	ssd1322_data(0x91);// 0xB3
 
 	ssd1322_command(SSD1322_SETMUXRATIO);// 0xCA
-	ssd1322_command(0x3F);// duty = 1/64
+	ssd1322_data(0x3F);// duty = 1/64
 
 	ssd1322_command(SSD1322_SETDISPLAYOFFSET);// 0xA2
-	ssd1322_command(0x00);
+	ssd1322_data(0x00);
 
 	ssd1322_command(SSD1322_SETSTARTLINE);// 0xA1
-	ssd1322_command(0x00);
+	ssd1322_data(0x00);
 
 	ssd1322_command(SSD1322_SETREMAP);// 0xA0
-	ssd1322_command(0x14);//Horizontal address increment,Disable Column Address Re-map,Enable Nibble Re-map,Scan from COM[N-1] to COM0,Disable COM Split Odd Even
-	ssd1322_command(0x11);//Enable Dual COM mode
+	ssd1322_data(0x14);//Horizontal address increment,Disable Column Address Re-map,Enable Nibble Re-map,Scan from COM[N-1] to COM0,Disable COM Split Odd Even
+	ssd1322_data(0x11);//Enable Dual COM mode
+
+	ssd1322_command(SSD1322_SETGPIO);// 0xB5
+	ssd1322_data(0x00);// Disable GPIO Pins Input
 
 	ssd1322_command(SSD1322_FUNCTIONSEL);// 0xAB
-	ssd1322_command(0x01);// selection external vdd
+	ssd1322_data(0x01);// selection external vdd
 
 	ssd1322_command(SSD1322_DISPLAYENHANCE);// 0xB4
-	ssd1322_command(0xA0);// enables the external VSL
-	ssd1322_command(0xFD);// 0xfFD,Enhanced low GS display quality;default is 0xb5(normal),
+	ssd1322_data(0xA0);// enables the external VSL
+	ssd1322_data(0xFD);// 0xfFD,Enhanced low GS display quality;default is 0xb5(normal),
 
 	ssd1322_command(SSD1322_SETCONTRASTCURRENT);// 0xC1
-	ssd1322_command(0xFF);// 0xFF - default is 0x7f
+	ssd1322_data(0xFF);// 0xFF - default is 0x7f
 
 	ssd1322_command(SSD1322_MASTERCURRENTCONTROL);// 0xC7
-	ssd1322_command(0x0F);// default is 0x0F
+	ssd1322_data(0x0F);// default is 0x0F
 
-	ssd1322_command(SSD1322_SETPHASELENGTH);// 0xB1
-	ssd1322_command(0xE2);// default is 0x74
+	// Set grayscale
+ 	defaultLinearGrayScale();
+
+ 	ssd1322_command(SSD1322_SETPHASELENGTH);// 0xB1
+	ssd1322_data(0xE2);// default is 0x74
 
 	ssd1322_command(SSD1322_DISPLAYENHANCEB);// 0xD1
-	ssd1322_command(0x82);// Reserved;default is 0xa2(normal)
-	ssd1322_command(0x20);//
+	ssd1322_data(0x82);// Reserved;default is 0xa2(normal)
+	ssd1322_data(0x20);//
 
 	ssd1322_command(SSD1322_SETPRECHARGEVOLTAGE);// 0xBB
-	ssd1322_command(0x1F);// 0.6xVcc
+	ssd1322_data(0x1F);// 0.6xVcc
 
 	ssd1322_command(SSD1322_SETSECONDPRECHARGEPERIOD);// 0xB6
-	ssd1322_command(0x08);// default
+	ssd1322_data(0x08);// default
 
 	ssd1322_command(SSD1322_SETVCOMH);// 0xBE
-	ssd1322_command(0x07);// 0.86xVcc;default is 0x04
+	ssd1322_data(0x07);// 0.86xVcc;default is 0x04
 
 	ssd1322_command(SSD1322_NORMALDISPLAY);// 0xA6
 
+	ssd1322_command(SSD1322_EXITPARTIALDISPLAY);// 0xA9
+
 #endif
+	//Clear down image ram before opening display
+	fill(0x00);
 
 	ssd1322_command(SSD1322_DISPLAYON);// 0xAF
 }
@@ -397,7 +436,7 @@ void Adafruit_SSD1322::invertDisplay(uint8_t i) {
 // startscrollright
 // Activate a right handed scroll for rows start through stop
 // Hint, the display is 16 rows tall. To scroll the whole display, run:
-// display.scrollright(0x00, 0x0F) 
+// display.scrollright(0x00, 0x0F)
 void Adafruit_SSD1322::startscrollright(uint8_t start, uint8_t stop) {
 	ssd1322_command(SSD1322_RIGHT_HORIZONTAL_SCROLL);
 	ssd1322_command(0X00);
@@ -412,7 +451,7 @@ void Adafruit_SSD1322::startscrollright(uint8_t start, uint8_t stop) {
 // startscrollleft
 // Activate a right handed scroll for rows start through stop
 // Hint, the display is 16 rows tall. To scroll the whole display, run:
-// display.scrollright(0x00, 0x0F) 
+// display.scrollright(0x00, 0x0F)
 void Adafruit_SSD1322::startscrollleft(uint8_t start, uint8_t stop) {
 	ssd1322_command(SSD1322_LEFT_HORIZONTAL_SCROLL);
 	ssd1322_command(0X00);
@@ -427,7 +466,7 @@ void Adafruit_SSD1322::startscrollleft(uint8_t start, uint8_t stop) {
 // startscrolldiagright
 // Activate a diagonal scroll for rows start through stop
 // Hint, the display is 16 rows tall. To scroll the whole display, run:
-// display.scrollright(0x00, 0x0F) 
+// display.scrollright(0x00, 0x0F)
 void Adafruit_SSD1322::startscrolldiagright(uint8_t start, uint8_t stop) {
 	ssd1322_command(SSD1322_SET_VERTICAL_SCROLL_AREA);
 	ssd1322_command(0X00);
@@ -444,7 +483,7 @@ void Adafruit_SSD1322::startscrolldiagright(uint8_t start, uint8_t stop) {
 // startscrolldiagleft
 // Activate a diagonal scroll for rows start through stop
 // Hint, the display is 16 rows tall. To scroll the whole display, run:
-// display.scrollright(0x00, 0x0F) 
+// display.scrollright(0x00, 0x0F)
 void Adafruit_SSD1322::startscrolldiagleft(uint8_t start, uint8_t stop) {
 	ssd1322_command(SSD1322_SET_VERTICAL_SCROLL_AREA);
 	ssd1322_command(0X00);
@@ -535,60 +574,27 @@ void Adafruit_SSD1322::ssd1322_data(uint8_t c) {
 		Wire.endTransmission();
 	}
 }
-
 void Adafruit_SSD1322::display(void) {
-//	ssd1322_command(SSD1322_SETCOLUMNADDR);
-//	ssd1322_command(0);   // Column start address (0 = reset)
-//	ssd1322_command(SSD1322_LCDWIDTH - 1); // Column end address (127 = reset)
-//
-//	ssd1322_command(SSD1322_PAGEADDR);
-//	ssd1322_command(0); // Page start address (0 = reset)
-//#if SSD1322_LCDHEIGHT == 64
-//	ssd1322_command(7); // Page end address
-//#endif
-//#if SSD1322_LCDHEIGHT == 32
-//	ssd1322_command(3); // Page end address
-//#endif
-//#if SSD1322_LCDHEIGHT == 16
-//	ssd1322_command(1); // Page end address
-//#endif
-//
-//	if (sid != -1) {
-//		// SPI
-//		*csport |= cspinmask;
-//		*dcport |= dcpinmask;
-//		*csport &= ~cspinmask;
-//
-//		for (uint16_t i = 0; i < (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 8);
-//				i++) {
-//			fastSPIwrite (buffer[i]);
-//			//ssd1306_data(buffer[i]);
-//		}
-//		*csport |= cspinmask;
-//	} else {
-//		// save I2C bitrate
-//		//Serial.println(TWBR, DEC);
-//		//Serial.println(TWSR & 0x3, DEC);
-//
-//		// I2C
-//		for (uint16_t i = 0; i < (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 8);
-//				i++) {
-//			// send a bunch of data in one xmission
-//			Wire.beginTransmission(_i2caddr);
-//			WIRE_WRITE(0x40);
-//			for (uint8_t x = 0; x < 16; x++) {
-//				WIRE_WRITE(buffer[i]);
-//				i++;
-//			}
-//			i--;
-//			Wire.endTransmission();
-//		}
-//	}
+
+    ssd1322_command(SSD1322_SETCOLUMNADDR);
+    ssd1322_data(MIN_SEG);
+    ssd1322_data(MAX_SEG);
+
+    ssd1322_command(SSD1322_SETROWADDR);
+    ssd1322_data(0);
+    ssd1322_data(63);
+
+    ssd1322_command(SSD1322_WRITERAM);
+
+	for (uint16_t i = 0; i < (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 2); i++)
+	{
+		ssd1322_data(buffer[i]);
+	}
 }
 
 // clear everything
 void Adafruit_SSD1322::clearDisplay(void) {
-	memset(buffer, 0, (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 8));
+	memset(buffer, 0, (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 2));
 }
 
 inline void Adafruit_SSD1322::fastSPIwrite(uint8_t d) {
@@ -647,6 +653,14 @@ void Adafruit_SSD1322::drawFastHLine(int16_t x, int16_t y, int16_t w,
 
 void Adafruit_SSD1322::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
 		uint16_t color) {
+/*
+Serial.print("x=");
+Serial.print(x);
+Serial.print("y=");
+Serial.print(y);
+Serial.print("w=");
+Serial.print(w);
+*/
 	// Do bounds/limit checks
 	if (y < 0 || y >= HEIGHT) {
 		return;
@@ -671,33 +685,66 @@ void Adafruit_SSD1322::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
 	// set up the pointer for  movement through the buffer
 	register uint8_t *pBuf = buffer;
 	// adjust the buffer pointer for the current row
-	pBuf += ((y / 8) * SSD1322_LCDWIDTH);
-	// and offset x columns in
-	pBuf += x;
+	pBuf += (x >> 1) + (y * (SSD1322_LCDWIDTH / 2));
 
-	register uint8_t mask = 1 << (y & 7);
+	register uint8_t oddmask = color;
+	register uint8_t evenmask = (color << 4);
+	register uint8_t fullmask = (color << 4) + color;
 
-	switch (color) {
-	case WHITE:
-		while (w--) {
-			*pBuf++ |= mask;
+	uint8_t byteLen = w / 2;
+
+	if (((x % 2) == 0) && ((w % 2) == 0))  // Start at even and length is even
+	{
+//		Serial.println("Start at even and length is even");
+		while (byteLen--)
+		{
+			*pBuf++ |= fullmask;
 		}
-		;
-		break;
-	case BLACK:
-		mask = ~mask;
-		while (w--) {
-			*pBuf++ &= mask;
-		}
-		;
-		break;
-	case INVERSE:
-		while (w--) {
-			*pBuf++ ^= mask;
-		}
-		;
-		break;
+
+		return;
 	}
+
+	if (((x % 2) == 1) && ((w % 2) == 1)) // Start at odd and length is odd
+	{
+//		Serial.println("Start at odd and length is odd");
+		*pBuf++ |= oddmask;
+
+		while (byteLen--)
+		{
+			*pBuf++ |= fullmask;
+		}
+		return;
+	}
+
+	if (((x % 2) == 0) && ((w % 2) == 1)) // Start at even and length is odd
+	{
+//		Serial.println("Start at even and length is odd");
+
+		while (byteLen--)
+		{
+			*pBuf++ |= fullmask;
+		}
+
+		*pBuf++ |= evenmask;
+
+		return;
+	}
+
+	if (((x % 2) == 1) && ((w % 2) == 0)) // Start at odd and length is even
+	{
+//		Serial.println("Start at odd and length is even");
+		*pBuf++ |= oddmask;
+
+		while (byteLen--)
+		{
+			*pBuf++ |= fullmask;
+		}
+
+		*pBuf++ |= evenmask;
+		return;
+	}
+
+	return;
 }
 
 void Adafruit_SSD1322::drawFastVLine(int16_t x, int16_t y, int16_t h,
@@ -769,97 +816,82 @@ void Adafruit_SSD1322::drawFastVLineInternal(int16_t x, int16_t __y,
 	// set up the pointer for fast movement through the buffer
 	register uint8_t *pBuf = buffer;
 	// adjust the buffer pointer for the current row
-	pBuf += ((y / 8) * SSD1322_LCDWIDTH);
-	// and offset x columns in
-	pBuf += x;
+	pBuf += (x >> 1) + (y  * (SSD1322_LCDWIDTH / 2));
 
-	// do the first partial byte, if necessary - this requires some masking
-	register uint8_t mod = (y & 7);
-	if (mod) {
-		// mask off the high n bits we want to set
-		mod = 8 - mod;
+	register uint8_t mask = ((x % 2) ? color : color << 4);
 
-		// note - lookup table results in a nearly 10% performance improvement in fill* functions
-		// register uint8_t mask = ~(0xFF >> (mod));
-		static uint8_t premask[8] = { 0x00, 0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC,
-				0xFE };
-		register uint8_t mask = premask[mod];
+	while (h--)
+	{
+		// write our value in
+		*pBuf |= mask;
 
-		// adjust the mask if we're not going to reach the end of this byte
-		if (h < mod) {
-			mask &= (0XFF >> (mod - h));
-		}
+		// adjust the buffer forward to next row worth of data
+		pBuf += SSD1322_LCDWIDTH / 2;
 
-		switch (color) {
-		case WHITE:
-			*pBuf |= mask;
-			break;
-		case BLACK:
-			*pBuf &= ~mask;
-			break;
-		case INVERSE:
-			*pBuf ^= mask;
-			break;
-		}
-
-		// fast exit if we're done here!
-		if (h < mod) {
-			return;
-		}
-
-		h -= mod;
-
-		pBuf += SSD1322_LCDWIDTH;
-	}
-
-	// write solid bytes while we can - effectively doing 8 rows at a time
-	if (h >= 8) {
-		if (color == INVERSE) { // separate copy of the code so we don't impact performance of the black/white write version with an extra comparison per loop
-			do {
-				*pBuf = ~(*pBuf);
-
-				// adjust the buffer forward 8 rows worth of data
-				pBuf += SSD1322_LCDWIDTH;
-
-				// adjust h & y (there's got to be a faster way for me to do this, but this should still help a fair bit for now)
-				h -= 8;
-			} while (h >= 8);
-		} else {
-			// store a local value to work with
-			register uint8_t val = (color == WHITE) ? 255 : 0;
-
-			do {
-				// write our value in
-				*pBuf = val;
-
-				// adjust the buffer forward 8 rows worth of data
-				pBuf += SSD1322_LCDWIDTH;
-
-				// adjust h & y (there's got to be a faster way for me to do this, but this should still help a fair bit for now)
-				h -= 8;
-			} while (h >= 8);
-		}
-	}
-
-	// now do the final partial byte, if necessary
-	if (h) {
-		mod = h & 7;
-		// this time we want to mask the low bits of the byte, vs the high bits we did above
-		// register uint8_t mask = (1 << mod) - 1;
-		// note - lookup table results in a nearly 10% performance improvement in fill* functions
-		static uint8_t postmask[8] = { 0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F,
-				0x7F };
-		register uint8_t mask = postmask[mod];
-		switch (color) {
-		case WHITE:
-			*pBuf |= mask;
-			break;
-		case BLACK:
-			*pBuf &= ~mask;
-			break;
-		case INVERSE:
-			*pBuf ^= mask;
-			break;
-		}
-	}
+	};
 }
+
+/**
+ * Fill the display with the specified colour by setting
+ * every pixel to the colour.
+ * @param colour - fill the display with this colour.
+ */
+void Adafruit_SSD1322::fill(uint8_t colour)
+{
+    uint8_t x,y;
+
+    ssd1322_command(SSD1322_SETCOLUMNADDR);
+    ssd1322_data(MIN_SEG);
+    ssd1322_data(MAX_SEG);
+
+    ssd1322_command(SSD1322_SETROWADDR);
+    ssd1322_data(0);
+    ssd1322_data(63);
+
+    colour = (colour & 0x0F) | (colour << 4);
+
+    ssd1322_command(SSD1322_WRITERAM);
+
+	for(y=0; y<64; y++)
+    {
+		for(x=0; x<64; x++)
+		{
+		    ssd1322_data(colour);
+		    ssd1322_data(colour);
+		}
+    }
+    delay(1);
+}
+
+void Adafruit_SSD1322::defaultLinearGrayScale()
+{
+	ssd1322_command(SSD1322_SELECTDEFAULTGRAYSCALE); // 0xB9
+}
+
+/*
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+//  Gray Scale Table Setting (Full Screen)
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+void Set_Gray_Scale_Table()
+{
+	oled_Command_25664(0xB8);			// Set Gray Scale Table
+	oled_Data_25664(0x0C);			//   Gray Scale Level 1
+	oled_Data_25664(0x18);			//   Gray Scale Level 2
+	oled_Data_25664(0x24);			//   Gray Scale Level 3
+	oled_Data_25664(0x30);			//   Gray Scale Level 4
+	oled_Data_25664(0x3C);			//   Gray Scale Level 5
+	oled_Data_25664(0x48);			//   Gray Scale Level 6
+	oled_Data_25664(0x54);			//   Gray Scale Level 7
+	oled_Data_25664(0x60);			//   Gray Scale Level 8
+	oled_Data_25664(0x6C);			//   Gray Scale Level 9
+	oled_Data_25664(0x78);			//   Gray Scale Level 10
+	oled_Data_25664(0x84);			//   Gray Scale Level 11
+	oled_Data_25664(0x90);			//   Gray Scale Level 12
+	oled_Data_25664(0x9C);			//   Gray Scale Level 13
+	oled_Data_25664(0xA8);			//   Gray Scale Level 14
+	oled_Data_25664(0xB4);			//   Gray Scale Level 15
+
+	oled_Command_25664(0x00);			// Enable Gray Scale Table
+}
+
+*/

@@ -4,14 +4,14 @@ This is a library for our Monochrome OLEDs based on SSD1322 drivers
   Pick one up today in the adafruit shop!
   ------> http://www.adafruit.com/category/63_98
 
-These displays use SPI to communicate, 4 or 5 pins are required to  
+These displays use SPI to communicate, 4 or 5 pins are required to
 interface
 
-Adafruit invests time and resources providing this open source code, 
-please support Adafruit and open-source hardware by purchasing 
+Adafruit invests time and resources providing this open source code,
+please support Adafruit and open-source hardware by purchasing
 products from Adafruit!
 
-Written by Limor Fried/Ladyada  for Adafruit Industries.  
+Written by Limor Fried/Ladyada  for Adafruit Industries.
 BSD license, check license.txt for more information
 All text above, and the splash screen must be included in any redistribution
 *********************************************************************/
@@ -58,7 +58,8 @@ All text above, and the splash screen must be included in any redistribution
 
 #if defined SSD1322_256_64
   #define SSD1322_LCDWIDTH                  256
-  #define SSD1322_LCDHEIGHT                 64
+//  #define SSD1322_LCDHEIGHT                 64
+  #define SSD1322_LCDHEIGHT                 12
 #endif
 
 #define SSD1322_SETCOMMANDLOCK 0xFD
@@ -82,45 +83,18 @@ All text above, and the splash screen must be included in any redistribution
 #define SSD1322_SETMUXRATIO 0xCA
 #define SSD1322_SETCOLUMNADDR 0x15
 #define SSD1322_SETROWADDR 0x75
+#define SSD1322_WRITERAM 0x5C
+#define SSD1322_ENTIREDISPLAYON 0xA5
+#define SSD1322_ENTIREDISPLAYOFF 0xA4
+#define SSD1322_SETGPIO 0xB5
+#define SSD1322_EXITPARTIALDISPLAY 0xA9
+#define SSD1322_SELECTDEFAULTGRAYSCALE 0xB9
+
+
 
 #define MIN_SEG	0x1C
 #define MAX_SEG	0x5B
 
-
-  /*
-#define SSD1322_SETCONTRAST 0x81
-#define SSD1322_DISPLAYALLON_RESUME 0xA4
-#define SSD1322_DISPLAYALLON 0xA5
-#define SSD1322_NORMALDISPLAY 0xA6
-#define SSD1322_INVERTDISPLAY 0xA7
-
-#define SSD1322_SETCOMPINS 0xDA
-
-#define SSD1322_SETVCOMDETECT 0xDB
-
-#define SSD1322_SETDISPLAYCLOCKDIV 0xD5
-#define SSD1322_SETPRECHARGE 0xD9
-
-#define SSD1322_SETMULTIPLEX 0xA8
-
-#define SSD1322_SETLOWCOLUMN 0x00
-#define SSD1322_SETHIGHCOLUMN 0x10
-
-
-#define SSD1322_MEMORYMODE 0x20
-#define SSD1322_COLUMNADDR 0x21
-#define SSD1322_PAGEADDR   0x22
-
-#define SSD1322_COMSCANINC 0xC0
-#define SSD1322_COMSCANDEC 0xC8
-
-#define SSD1322_SEGREMAP 0xA0
-
-#define SSD1322_CHARGEPUMP 0x8D
-
-#define SSD1322_EXTERNALVCC 0x1
-#define SSD1322_SWITCHCAPVCC 0x2
-*/
 // Scrolling #defines
 #define SSD1322_ACTIVATE_SCROLL 0x2F
 #define SSD1322_DEACTIVATE_SCROLL 0x2E
@@ -155,8 +129,16 @@ class Adafruit_SSD1322 : public Adafruit_GFX {
 
   void drawPixel(int16_t x, int16_t y, uint16_t color);
 
+  void fill(uint8_t colour);
+  void defaultLinearGrayScale();
+
+
+
   virtual void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
   virtual void drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
+
+//  void drawFastVLineInternal(int16_t x, int16_t y, int16_t h, uint16_t color);
+//  void drawFastHLineInternal(int16_t x, int16_t y, int16_t w, uint16_t color);
 
  private:
   int8_t _i2caddr, sid, sclk, dc, rst, cs;
