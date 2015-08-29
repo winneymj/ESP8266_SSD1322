@@ -113,12 +113,11 @@ class Adafruit_SSD1322 : public Adafruit_GFX {
   void begin(uint8_t i2caddr = SSD1322_I2C_ADDRESS, bool reset=true);
   void ssd1322_command(uint8_t c);
   void ssd1322_data(uint8_t c);
-  void ssd1322_data32(uint32_t c);
-
+  void ssd1322_dataBytes(uint8_t *buf, uint32_t size);
 
   void clearDisplay(void);
   void invertDisplay(uint8_t i);
-  void display(boolean clear = true);
+  void display();
 
   void startscrollright(uint8_t start, uint8_t stop);
   void startscrollleft(uint8_t start, uint8_t stop);
@@ -144,9 +143,6 @@ class Adafruit_SSD1322 : public Adafruit_GFX {
  private:
   int8_t _i2caddr, sid, sclk, dc, rst, cs;
   void fastSPIwrite(uint8_t c);
-  void fastSPIwrite32(uint32_t d);
-
-
 
   boolean hwSPI;
   PortReg *mosiport, *clkport, *csport, *dcport;

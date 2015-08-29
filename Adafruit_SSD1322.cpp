@@ -516,12 +516,6 @@ void Adafruit_SSD1322::ssd1322_data(uint8_t c) {
 		digitalWrite(cs, LOW);
 		fastSPIwrite(c);
 		digitalWrite(cs, HIGH);
-#else
-		*csport |= cspinmask;
-		*dcport |= dcpinmask;
-		*csport &= ~cspinmask;
-		fastSPIwrite(c);
-		*csport |= cspinmask;
 #endif
 	} else {
 		// I2C
@@ -533,27 +527,27 @@ void Adafruit_SSD1322::ssd1322_data(uint8_t c) {
 	}
 }
 
-void Adafruit_SSD1322::ssd1322_data32(uint32_t c) {
+void Adafruit_SSD1322::ssd1322_dataBytes(uint8_t *buf, uint32_t size) {
 	if (sid != -1) {
 		// SPI
 #ifdef ESP8266    					//Added for compatibility with ESP8266 board
 		digitalWrite(cs, HIGH);
 		digitalWrite(dc, HIGH);
 		digitalWrite(cs, LOW);
-		fastSPIwrite32(c);
+		SPI.writeBytes(buf, size);
 		digitalWrite(cs, HIGH);
 #endif
 	} else {
 		// I2C
-		uint8_t control = 0x40;   // Co = 0, D/C = 1
-		Wire.beginTransmission(_i2caddr);
-		WIRE_WRITE(control);
-		WIRE_WRITE(c);
-		Wire.endTransmission();
+//		uint8_t control = 0x40;   // Co = 0, D/C = 1
+//		Wire.beginTransmission(_i2caddr);
+//		WIRE_WRITE(control);
+//		WIRE_WRITE(c);
+//		Wire.endTransmission();
 	}
 }
 
-void Adafruit_SSD1322::display(boolean clear) {
+void Adafruit_SSD1322::display() {
 
     ssd1322_command(SSD1322_SETCOLUMNADDR);
     ssd1322_data(MIN_SEG);
@@ -565,20 +559,11 @@ void Adafruit_SSD1322::display(boolean clear) {
 
     ssd1322_command(SSD1322_WRITERAM);
 
-    register uint16_t bufSize = (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 8); // 32 bits size
-	register uint32_t *pBuf = (uint32_t *)buffer;
+    register uint16_t bufSize = (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 2); // bytes
+	register uint8_t *pBuf = buffer;
 
-	for (uint16_t i = 0; i < bufSize; i++)
-	{
-		// Write 16 bits at a time
-		ssd1322_data32(*pBuf);
-
-		// Clear buffer during the display
-		if (clear)
-			*pBuf = 0x0000;
-
-		pBuf++;
-	}
+	// Write as quick as possible 64 bits at a time
+	ssd1322_dataBytes(pBuf, bufSize);
 }
 
 // clear everything
@@ -590,23 +575,6 @@ inline void Adafruit_SSD1322::fastSPIwrite(uint8_t d) {
 
 	if (hwSPI) {
 		(void) SPI.transfer(d);
-	} else {
-		for (uint8_t bit = 0x80; bit; bit >>= 1) {
-			*clkport &= ~clkpinmask;
-			if (d & bit)
-				*mosiport |= mosipinmask;
-			else
-				*mosiport &= ~mosipinmask;
-			*clkport |= clkpinmask;
-		}
-	}
-	//*csport |= cspinmask;
-}
-
-inline void Adafruit_SSD1322::fastSPIwrite32(uint32_t d) {
-
-	if (hwSPI) {
-		(void) SPI.write32(d, false);
 	} else {
 		for (uint8_t bit = 0x80; bit; bit >>= 1) {
 			*clkport &= ~clkpinmask;
