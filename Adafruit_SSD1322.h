@@ -59,7 +59,7 @@ All text above, and the splash screen must be included in any redistribution
 #if defined SSD1322_256_64
   #define SSD1322_LCDWIDTH                  256
 //  #define SSD1322_LCDHEIGHT                 64
-  #define SSD1322_LCDHEIGHT                 12
+  #define SSD1322_LCDHEIGHT                 64
 #endif
 
 #define SSD1322_SETCOMMANDLOCK 0xFD
@@ -113,10 +113,12 @@ class Adafruit_SSD1322 : public Adafruit_GFX {
   void begin(uint8_t i2caddr = SSD1322_I2C_ADDRESS, bool reset=true);
   void ssd1322_command(uint8_t c);
   void ssd1322_data(uint8_t c);
+  void ssd1322_data32(uint32_t c);
+
 
   void clearDisplay(void);
   void invertDisplay(uint8_t i);
-  void display();
+  void display(boolean clear = true);
 
   void startscrollright(uint8_t start, uint8_t stop);
   void startscrollleft(uint8_t start, uint8_t stop);
@@ -130,9 +132,8 @@ class Adafruit_SSD1322 : public Adafruit_GFX {
   void drawPixel(int16_t x, int16_t y, uint16_t color);
 
   void fill(uint8_t colour);
-  void defaultLinearGrayScale();
 
-
+  void fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint8_t color);
 
   virtual void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
   virtual void drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
@@ -143,6 +144,9 @@ class Adafruit_SSD1322 : public Adafruit_GFX {
  private:
   int8_t _i2caddr, sid, sclk, dc, rst, cs;
   void fastSPIwrite(uint8_t c);
+  void fastSPIwrite32(uint32_t d);
+
+
 
   boolean hwSPI;
   PortReg *mosiport, *clkport, *csport, *dcport;

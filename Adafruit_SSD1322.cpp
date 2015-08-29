@@ -16,9 +16,13 @@
  All text above, and the splash screen below must be included in any redistribution
  *********************************************************************/
 
+#ifndef ESP8266    					//Added for compatibility with ESP8266 board
 #include <avr/pgmspace.h>
+#endif
 #ifndef __SAM3X8E__
+#ifndef ESP8266    					//Added for compatibility with ESP8266 board
 #include <util/delay.h>
+#endif
 #endif
 #include <stdlib.h>
 
@@ -206,67 +210,21 @@ static uint8_t buffer[SSD1322_LCDHEIGHT * SSD1322_LCDWIDTH / 8] = { 0xFF, 0xFF,
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 */
+// the most basic function, set a single pixel
 void Adafruit_SSD1322::drawPixel(int16_t x, int16_t y, uint16_t gscale) {
 	if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
 		return;
-/*
-	int16_t bytePos = (x >> 1) + (y * (SSD1322_LCDWIDTH / 2));
-	int8_t val = (x % 2) ? color : color << 4;
 
+	register uint8_t mask = ((x % 2) ? gscale : gscale << 4);
+	register uint8_t *pBuf = &buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))];
+	register uint8_t b1 = *pBuf;
+	b1 &= (x % 2) ? 0xF0 : 0x0F; // cleardown nibble to be replaced
 
-	Serial.print("x=");
-	Serial.println(x);
-	Serial.print("y=");
-	Serial.println(y);
-	Serial.print("bytePos=");
-	Serial.println(bytePos);
-	Serial.print("MSB/LSB=");
-	Serial.println((x % 2) ? "LSB" : "MSB");
-*/
-	buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))] |= ((x % 2) ? gscale : gscale << 4);
+				// write our value in
+	*pBuf++ = b1 | mask;
 
-
-
+//	buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))] |= ((x % 2) ? gscale : gscale << 4);
 }
-/*
-// the most basic function, set a single pixel
-void Adafruit_SSD1322::drawPixel(int16_t x, int16_t y, uint16_t color) {
-	if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
-		return;
-
-	// check rotation, move pixel around if necessary
-	switch (getRotation()) {
-	case 1:
-		swap(x, y)
-		;
-		x = WIDTH - x - 1;
-		break;
-	case 2:
-		x = WIDTH - x - 1;
-		y = HEIGHT - y - 1;
-		break;
-	case 3:
-		swap(x, y)
-		;
-		y = HEIGHT - y - 1;
-		break;
-	}
-
-	// x is which column
-	switch (color) {
-	case WHITE:
-		buffer[x + (y / 8) * SSD1322_LCDWIDTH] |= (1 << (y & 7));
-		break;
-	case BLACK:
-		buffer[x + (y / 8) * SSD1322_LCDWIDTH] &= ~(1 << (y & 7));
-		break;
-	case INVERSE:
-		buffer[x + (y / 8) * SSD1322_LCDWIDTH] ^= (1 << (y & 7));
-		break;
-	}
-
-}
-*/
 Adafruit_SSD1322::Adafruit_SSD1322(int8_t SID, int8_t SCLK, int8_t DC,
 		int8_t RST, int8_t CS) :
 		Adafruit_GFX(SSD1322_LCDWIDTH, SSD1322_LCDHEIGHT) {
@@ -396,7 +354,7 @@ void Adafruit_SSD1322::begin(uint8_t i2caddr, bool reset) {
 	ssd1322_data(0x0F);// default is 0x0F
 
 	// Set grayscale
- 	defaultLinearGrayScale();
+	ssd1322_command(SSD1322_SELECTDEFAULTGRAYSCALE); // 0xB9
 
  	ssd1322_command(SSD1322_SETPHASELENGTH);// 0xB1
 	ssd1322_data(0xE2);// default is 0x74
@@ -574,7 +532,28 @@ void Adafruit_SSD1322::ssd1322_data(uint8_t c) {
 		Wire.endTransmission();
 	}
 }
-void Adafruit_SSD1322::display(void) {
+
+void Adafruit_SSD1322::ssd1322_data32(uint32_t c) {
+	if (sid != -1) {
+		// SPI
+#ifdef ESP8266    					//Added for compatibility with ESP8266 board
+		digitalWrite(cs, HIGH);
+		digitalWrite(dc, HIGH);
+		digitalWrite(cs, LOW);
+		fastSPIwrite32(c);
+		digitalWrite(cs, HIGH);
+#endif
+	} else {
+		// I2C
+		uint8_t control = 0x40;   // Co = 0, D/C = 1
+		Wire.beginTransmission(_i2caddr);
+		WIRE_WRITE(control);
+		WIRE_WRITE(c);
+		Wire.endTransmission();
+	}
+}
+
+void Adafruit_SSD1322::display(boolean clear) {
 
     ssd1322_command(SSD1322_SETCOLUMNADDR);
     ssd1322_data(MIN_SEG);
@@ -586,9 +565,19 @@ void Adafruit_SSD1322::display(void) {
 
     ssd1322_command(SSD1322_WRITERAM);
 
-	for (uint16_t i = 0; i < (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 2); i++)
+    register uint16_t bufSize = (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 8); // 32 bits size
+	register uint32_t *pBuf = (uint32_t *)buffer;
+
+	for (uint16_t i = 0; i < bufSize; i++)
 	{
-		ssd1322_data(buffer[i]);
+		// Write 16 bits at a time
+		ssd1322_data32(*pBuf);
+
+		// Clear buffer during the display
+		if (clear)
+			*pBuf = 0x0000;
+
+		pBuf++;
 	}
 }
 
@@ -601,6 +590,23 @@ inline void Adafruit_SSD1322::fastSPIwrite(uint8_t d) {
 
 	if (hwSPI) {
 		(void) SPI.transfer(d);
+	} else {
+		for (uint8_t bit = 0x80; bit; bit >>= 1) {
+			*clkport &= ~clkpinmask;
+			if (d & bit)
+				*mosiport |= mosipinmask;
+			else
+				*mosiport &= ~mosipinmask;
+			*clkport |= clkpinmask;
+		}
+	}
+	//*csport |= cspinmask;
+}
+
+inline void Adafruit_SSD1322::fastSPIwrite32(uint32_t d) {
+
+	if (hwSPI) {
+		(void) SPI.write32(d, false);
 	} else {
 		for (uint8_t bit = 0x80; bit; bit >>= 1) {
 			*clkport &= ~clkpinmask;
@@ -653,14 +659,6 @@ void Adafruit_SSD1322::drawFastHLine(int16_t x, int16_t y, int16_t w,
 
 void Adafruit_SSD1322::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
 		uint16_t color) {
-/*
-Serial.print("x=");
-Serial.print(x);
-Serial.print("y=");
-Serial.print(y);
-Serial.print("w=");
-Serial.print(w);
-*/
 	// Do bounds/limit checks
 	if (y < 0 || y >= HEIGHT) {
 		return;
@@ -698,7 +696,7 @@ Serial.print(w);
 //		Serial.println("Start at even and length is even");
 		while (byteLen--)
 		{
-			*pBuf++ |= fullmask;
+			*pBuf++ = fullmask;
 		}
 
 		return;
@@ -707,11 +705,15 @@ Serial.print(w);
 	if (((x % 2) == 1) && ((w % 2) == 1)) // Start at odd and length is odd
 	{
 //		Serial.println("Start at odd and length is odd");
-		*pBuf++ |= oddmask;
+		register uint8_t b1 = *pBuf;
+		b1 &= (x % 2) ? 0xF0 : 0x0F; // cleardown nibble to be replaced
+
+		// write our value in
+		*pBuf++ = b1 | oddmask;
 
 		while (byteLen--)
 		{
-			*pBuf++ |= fullmask;
+			*pBuf++ = fullmask;
 		}
 		return;
 	}
@@ -722,10 +724,17 @@ Serial.print(w);
 
 		while (byteLen--)
 		{
-			*pBuf++ |= fullmask;
+			*pBuf++ = fullmask;
 		}
 
-		*pBuf++ |= evenmask;
+		register uint8_t b1 = *pBuf;
+//		b1 &= (x % 2) ? 0xF0 : 0x0F; // cleardown nibble to be replaced
+		b1 &= 0x0F; // cleardown nibble to be replaced
+
+		// write our value in
+		*pBuf++ = b1 | evenmask;
+
+//		*pBuf++ |= evenmask;
 
 		return;
 	}
@@ -733,14 +742,25 @@ Serial.print(w);
 	if (((x % 2) == 1) && ((w % 2) == 0)) // Start at odd and length is even
 	{
 //		Serial.println("Start at odd and length is even");
-		*pBuf++ |= oddmask;
+		register uint8_t b1 = *pBuf;
+		b1 &= (x % 2) ? 0xF0 : 0x0F; // cleardown nibble to be replaced
+
+		// write our value in
+		*pBuf++ = b1 | oddmask;
 
 		while (byteLen--)
 		{
-			*pBuf++ |= fullmask;
+			*pBuf++ = fullmask;
 		}
 
-		*pBuf++ |= evenmask;
+		b1 = *pBuf;
+//		b1 &= (x % 2) ? 0xF0 : 0x0F; // cleardown nibble to be replaced
+		b1 &= 0x0F; // cleardown nibble to be replaced
+
+		// write our value in
+		*pBuf++ = b1 | evenmask;
+
+//		*pBuf++ |= evenmask;
 		return;
 	}
 
@@ -820,10 +840,23 @@ void Adafruit_SSD1322::drawFastVLineInternal(int16_t x, int16_t __y,
 
 	register uint8_t mask = ((x % 2) ? color : color << 4);
 
+
+//Serial.print("mask=");
+//Serial.println(mask);
+
+//Serial.print("x >> 1=");
+//Serial.println(x >> 1);
+
+//Serial.print("pBuf=");
+//Serial.println((void*)pBuf);
+
 	while (h--)
 	{
+		register uint8_t b1 = *pBuf;
+		b1 &= (x % 2) ? 0xF0 : 0x0F; // cleardown nibble to be replaced
+
 		// write our value in
-		*pBuf |= mask;
+		*pBuf = b1 | mask;
 
 		// adjust the buffer forward to next row worth of data
 		pBuf += SSD1322_LCDWIDTH / 2;
@@ -860,13 +893,35 @@ void Adafruit_SSD1322::fill(uint8_t colour)
 		    ssd1322_data(colour);
 		}
     }
-    delay(1);
+    delay(0);
 }
 
-void Adafruit_SSD1322::defaultLinearGrayScale()
+// Right now limits are bitmap is even size on the X and must be placed evenly on the x coordinate
+void Adafruit_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint8_t color)
 {
-	ssd1322_command(SSD1322_SELECTDEFAULTGRAYSCALE); // 0xB9
+	// do nothing if we're off the left or right side of the screen
+	if (x < 0 || x >= WIDTH) {
+		return;
+	}
+
+	// calc start pos in the buffer
+	register uint8_t *pBuf = &buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))];
+	register uint8_t wInBytes = w >> 1; // Divide by 2, as 2 pixels per byte (4 bits per pixel)
+	uint16_t bitPos = 0;
+
+	// loop the height
+	for (int lh = 0; lh < h; lh++)
+	{
+		// loop the width
+		for (int lw = 0; lw < wInBytes; lw++)
+		{
+			*pBuf++ = pgm_read_byte(bitmap + bitPos++);
+		}
+
+		pBuf += (SSD1322_LCDWIDTH / 2) - wInBytes; // Move buffer position to next row
+	}
 }
+
 
 /*
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
