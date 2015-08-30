@@ -1,8 +1,6 @@
 /*********************************************************************
-This is a library for our Monochrome OLEDs based on SSD1322 drivers
-
-  Pick one up today in the adafruit shop!
-  ------> http://www.adafruit.com/category/63_98
+This is a library for the 256 x 64 pixel 16 color gray scale OLEDs
+based on SSD1322 drivers
 
 These displays use SPI to communicate, 4 or 5 pins are required to
 interface
@@ -58,7 +56,6 @@ All text above, and the splash screen must be included in any redistribution
 
 #if defined SSD1322_256_64
   #define SSD1322_LCDWIDTH                  256
-//  #define SSD1322_LCDHEIGHT                 64
   #define SSD1322_LCDHEIGHT                 64
 #endif
 
@@ -104,11 +101,11 @@ All text above, and the splash screen must be included in any redistribution
 #define SSD1322_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL 0x29
 #define SSD1322_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL 0x2A
 
-class Adafruit_SSD1322 : public Adafruit_GFX {
+class ESP8266_SSD1322 : public Adafruit_GFX {
  public:
-  Adafruit_SSD1322(int8_t SID, int8_t SCLK, int8_t DC, int8_t RST, int8_t CS);
-  Adafruit_SSD1322(int8_t DC, int8_t RST, int8_t CS);
-  Adafruit_SSD1322(int8_t RST);
+  ESP8266_SSD1322(int8_t SID, int8_t SCLK, int8_t DC, int8_t RST, int8_t CS);
+  ESP8266_SSD1322(int8_t DC, int8_t RST, int8_t CS);
+  ESP8266_SSD1322(int8_t RST);
 
   void begin(uint8_t i2caddr = SSD1322_I2C_ADDRESS, bool reset=true);
   void ssd1322_command(uint8_t c);
@@ -136,9 +133,6 @@ class Adafruit_SSD1322 : public Adafruit_GFX {
 
   virtual void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
   virtual void drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
-
-//  void drawFastVLineInternal(int16_t x, int16_t y, int16_t h, uint16_t color);
-//  void drawFastHLineInternal(int16_t x, int16_t y, int16_t w, uint16_t color);
 
  private:
   int8_t _i2caddr, sid, sclk, dc, rst, cs;
