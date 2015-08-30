@@ -1,20 +1,18 @@
 /*********************************************************************
- This is a library for our Monochrome OLEDs based on SSD1322 drivers
+This is a library for the 256 x 64 pixel 16 color gray scale OLEDs
+based on SSD1322 drivers
 
- Pick one up today in the adafruit shop!
- ------> http://www.adafruit.com/category/63_98
+These displays use SPI to communicate, 4 or 5 pins are required to
+interface
 
- These displays use SPI to communicate, 4 or 5 pins are required to
- interface
+Adafruit invests time and resources providing this open source code,
+please support Adafruit and open-source hardware by purchasing
+products from Adafruit!
 
- Adafruit invests time and resources providing this open source code,
- please support Adafruit and open-source hardware by purchasing
- products from Adafruit!
-
- Written by Limor Fried/Ladyada  for Adafruit Industries.
- BSD license, check license.txt for more information
- All text above, and the splash screen below must be included in any redistribution
- *********************************************************************/
+Written by Limor Fried/Ladyada  for Adafruit Industries.
+BSD license, check license.txt for more information
+All text above, and the splash screen must be included in any redistribution
+*********************************************************************/
 
 #ifndef ESP8266    					//Added for compatibility with ESP8266 board
 #include <avr/pgmspace.h>
@@ -87,41 +85,10 @@ void ESP8266_SSD1322::begin(uint8_t i2caddr, bool reset) {
 	if (sid != -1) {
 		pinMode(dc, OUTPUT);
 		pinMode(cs, OUTPUT);
-#ifndef ESP8266    					//Added for compatibility with ESP8266 board
-		csport = portOutputRegister(digitalPinToPort(cs));
-		cspinmask = digitalPinToBitMask(cs);
-		dcport = portOutputRegister(digitalPinToPort(dc));
-		dcpinmask = digitalPinToBitMask(dc);
-#endif
-		if (!hwSPI) {
-			// set pins for software-SPI
-			pinMode(sid, OUTPUT);
-			pinMode(sclk, OUTPUT);
-#ifndef ESP8266    					//Added for compatibility with ESP8266 board
-			clkport = portOutputRegister(digitalPinToPort(sclk));
-			clkpinmask = digitalPinToBitMask(sclk);
-			mosiport = portOutputRegister(digitalPinToPort(sid));
-			mosipinmask = digitalPinToBitMask(sid);
-#endif
-		}
 		if (hwSPI) {
 			SPI.begin();
-#ifdef __SAM3X8E__
-			SPI.setClockDivider (9); // 9.3 MHz
-#elif defined ESP8266    					//Added for compatibility with ESP8266 board
 			SPI.setClockDivider (SPI_CLOCK_DIV2); // 26/2 = 13 MHz (freq ESP8266 26 MHz)
-#else
-			SPI.setClockDivider(SPI_CLOCK_DIV2); // 8 MHz
-#endif
 		}
-	} else {
-		// I2C Init
-		Wire.begin();
-#ifdef __SAM3X8E__
-		// Force 400 KHz I2C, rawr! (Uses pins 20, 21 for SDA, SCL)
-		TWI1->TWI_CWGR = 0;
-		TWI1->TWI_CWGR = ((VARIANT_MCK / (2 * 400000)) - 4) * 0x101;
-#endif
 	}
 
 	if (reset)
@@ -308,66 +275,33 @@ void ESP8266_SSD1322::dim(boolean dim) {
 void ESP8266_SSD1322::ssd1322_command(uint8_t c) {
 	if (sid != -1) {
 		// SPI
-#ifdef ESP8266    					//Added for compatibility with ESP8266 board
 		digitalWrite(cs, HIGH);
 		digitalWrite(dc, LOW);
 		digitalWrite(cs, LOW);
 		fastSPIwrite(c);
 		digitalWrite(cs, HIGH);
-#else
-		*csport |= cspinmask;
-		*dcport &= ~dcpinmask;
-		*csport &= ~cspinmask;
-		fastSPIwrite(c);
-		*csport |= cspinmask;
-#endif
-	} else {
-		// I2C
-		uint8_t control = 0x00;   // Co = 0, D/C = 0
-		Wire.beginTransmission(_i2caddr);
-		WIRE_WRITE(control);
-		WIRE_WRITE(c);
-		Wire.endTransmission();
 	}
 }
 
 void ESP8266_SSD1322::ssd1322_data(uint8_t c) {
 	if (sid != -1) {
 		// SPI
-#ifdef ESP8266    					//Added for compatibility with ESP8266 board
 		digitalWrite(cs, HIGH);
 		digitalWrite(dc, HIGH);
 		digitalWrite(cs, LOW);
 		fastSPIwrite(c);
 		digitalWrite(cs, HIGH);
-#endif
-	} else {
-		// I2C
-		uint8_t control = 0x40;   // Co = 0, D/C = 1
-		Wire.beginTransmission(_i2caddr);
-		WIRE_WRITE(control);
-		WIRE_WRITE(c);
-		Wire.endTransmission();
 	}
 }
 
 void ESP8266_SSD1322::ssd1322_dataBytes(uint8_t *buf, uint32_t size) {
 	if (sid != -1) {
 		// SPI
-#ifdef ESP8266    					//Added for compatibility with ESP8266 board
 		digitalWrite(cs, HIGH);
 		digitalWrite(dc, HIGH);
 		digitalWrite(cs, LOW);
 		SPI.writeBytes(buf, size);
 		digitalWrite(cs, HIGH);
-#endif
-	} else {
-		// I2C
-//		uint8_t control = 0x40;   // Co = 0, D/C = 1
-//		Wire.beginTransmission(_i2caddr);
-//		WIRE_WRITE(control);
-//		WIRE_WRITE(c);
-//		Wire.endTransmission();
 	}
 }
 
@@ -485,7 +419,6 @@ void ESP8266_SSD1322::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
 
 	if (((x % 2) == 0) && ((w % 2) == 0))  // Start at even and length is even
 	{
-//		Serial.println("Start at even and length is even");
 		while (byteLen--)
 		{
 			*pBuf++ = fullmask;
@@ -496,7 +429,6 @@ void ESP8266_SSD1322::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
 
 	if (((x % 2) == 1) && ((w % 2) == 1)) // Start at odd and length is odd
 	{
-//		Serial.println("Start at odd and length is odd");
 		register uint8_t b1 = *pBuf;
 		b1 &= (x % 2) ? 0xF0 : 0x0F; // cleardown nibble to be replaced
 
@@ -520,20 +452,15 @@ void ESP8266_SSD1322::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
 		}
 
 		register uint8_t b1 = *pBuf;
-//		b1 &= (x % 2) ? 0xF0 : 0x0F; // cleardown nibble to be replaced
 		b1 &= 0x0F; // cleardown nibble to be replaced
 
 		// write our value in
 		*pBuf++ = b1 | evenmask;
-
-//		*pBuf++ |= evenmask;
-
 		return;
 	}
 
 	if (((x % 2) == 1) && ((w % 2) == 0)) // Start at odd and length is even
 	{
-//		Serial.println("Start at odd and length is even");
 		register uint8_t b1 = *pBuf;
 		b1 &= (x % 2) ? 0xF0 : 0x0F; // cleardown nibble to be replaced
 
@@ -546,13 +473,10 @@ void ESP8266_SSD1322::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
 		}
 
 		b1 = *pBuf;
-//		b1 &= (x % 2) ? 0xF0 : 0x0F; // cleardown nibble to be replaced
 		b1 &= 0x0F; // cleardown nibble to be replaced
 
 		// write our value in
 		*pBuf++ = b1 | evenmask;
-
-//		*pBuf++ |= evenmask;
 		return;
 	}
 
@@ -631,16 +555,6 @@ void ESP8266_SSD1322::drawFastVLineInternal(int16_t x, int16_t __y,
 	pBuf += (x >> 1) + (y  * (SSD1322_LCDWIDTH / 2));
 
 	register uint8_t mask = ((x % 2) ? color : color << 4);
-
-
-//Serial.print("mask=");
-//Serial.println(mask);
-
-//Serial.print("x >> 1=");
-//Serial.println(x >> 1);
-
-//Serial.print("pBuf=");
-//Serial.println((void*)pBuf);
 
 	while (h--)
 	{

@@ -1,40 +1,35 @@
 /*********************************************************************
-This is an example for our Monochrome OLEDs based on SSD1306 drivers
+This is a library for the 256 x 64 pixel 16 color gray scale OLEDs
+based on SSD1322 drivers
 
-  Pick one up today in the adafruit shop!
-  ------> http://www.adafruit.com/category/63_98
+These displays use SPI to communicate, 4 or 5 pins are required to
+interface
 
-This example is for a 128x64 size display using SPI to communicate
-4 or 5 pins are required to interface
-
-Adafruit invests time and resources providing this open source code, 
-please support Adafruit and open-source hardware by purchasing 
+Adafruit invests time and resources providing this open source code,
+please support Adafruit and open-source hardware by purchasing
 products from Adafruit!
 
-Written by Limor Fried/Ladyada  for Adafruit Industries.  
+Written by Limor Fried/Ladyada  for Adafruit Industries.
 BSD license, check license.txt for more information
 All text above, and the splash screen must be included in any redistribution
 *********************************************************************/
 
 #include <SPI.h>
-#include <Wire.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <ESP8266_SSD1322.h>
 
-// If using software SPI (the default case):
-#define OLED_MOSI   9
-#define OLED_CLK   10
-#define OLED_DC    11
-#define OLED_CS    12
-#define OLED_RESET 13
-Adafruit_SSD1306 display(OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
+//ESP8266 Pins
+#define OLED_CS     15  // Pin 19, CS - Chip select
+#define OLED_DC     2   // Pin 20 - DC digital signal
+#define OLED_RESET  16  // Pin 15 -RESET digital signal
 
-/* Uncomment this block to use hardware SPI
-#define OLED_DC     6
-#define OLED_CS     7
-#define OLED_RESET  8
-Adafruit_SSD1306 display(OLED_DC, OLED_RESET, OLED_CS);
-*/
+// ATMega32u4 pins
+//#define OLED_DC    8 //  D8  - B4
+//#define OLED_CS    17 // D17 - B0
+//#define OLED_RESET 9  // D9  - B5
+
+//hardware SPI - only way to go. Can get 110 FPS
+ESP8266_SSD1322 display(OLED_DC, OLED_RESET, OLED_CS);
 
 #define NUMFLAKES 10
 #define XPOS 0
@@ -61,15 +56,15 @@ static const unsigned char PROGMEM logo16_glcd_bmp[] =
   B01110000, B01110000,
   B00000000, B00110000 };
 
-#if (SSD1306_LCDHEIGHT != 64)
-#error("Height incorrect, please fix Adafruit_SSD1306.h!");
+#if (SSD1322_LCDHEIGHT != 64)
+#error("Height incorrect, please fix ESP8266_SSD1322.h!");
 #endif
 
 void setup()   {                
   Serial.begin(9600);
   
-  // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
-  display.begin(SSD1306_SWITCHCAPVCC);
+  // Initialize and perform reset
+  display.begin(true);
   // init done
   
   // Show image buffer on the display hardware.

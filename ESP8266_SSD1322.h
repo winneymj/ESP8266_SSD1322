@@ -33,8 +33,8 @@ All text above, and the splash screen must be included in any redistribution
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 
-#define BLACK 0
-#define WHITE 1
+#define BLACK 0x00
+#define WHITE 0x0F
 #define INVERSE 2
 
 #define SSD1322_I2C_ADDRESS   0x3C	// 011110+SA0+RW - 0x3C or 0x3D
