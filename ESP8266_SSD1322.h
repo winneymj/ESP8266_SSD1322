@@ -13,6 +13,10 @@ Written by Limor Fried/Ladyada  for Adafruit Industries.
 BSD license, check license.txt for more information
 All text above, and the splash screen must be included in any redistribution
 *********************************************************************/
+#ifndef _ESP8266_SD1322_H
+#define _ESP8266_SD1322_H
+
+#include "Load_fonts.h"
 
 #if ARDUINO >= 100
  #include "Arduino.h"
@@ -134,6 +138,14 @@ class ESP8266_SSD1322 : public Adafruit_GFX {
   virtual void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
   virtual void drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
 
+  int drawUnicode(unsigned int uniCode, int x, int y, int size);
+  int drawNumber(long long_num,int poX, int poY, int size);
+  int drawChar(char c, int x, int y, int size);
+  int drawString(char *string, int poX, int poY, int size);
+  int drawCentreString(char *string, int dX, int poY, int size);
+  int drawRightString(char *string, int dX, int poY, int size);
+  int drawFloat(float floatNumber,int decimal,int poX, int poY, int size);
+
  private:
   int8_t _i2caddr, sid, sclk, dc, rst, cs;
   void fastSPIwrite(uint8_t c);
@@ -146,3 +158,5 @@ class ESP8266_SSD1322 : public Adafruit_GFX {
   inline void drawFastHLineInternal(int16_t x, int16_t y, int16_t w, uint16_t color) __attribute__((always_inline));
 
 };
+
+#endif
