@@ -52,15 +52,24 @@ All text above, and the splash screen must be included in any redistribution
     Select the appropriate display below to create an appropriately
     sized framebuffer, etc.
 
-    SSD1322_256_64  256x64 pixel display
+    SSD1322_256_64_4  256x64 pixel display 16 color (4 bits per pixel) 8k
+    SSD1322_256_64_1  256x64 pixel display 2 color (1 bits per pixel) 2k
 
     -----------------------------------------------------------------------*/
-   #define SSD1322_256_64
+//   #define SSD1322_256_64_4
+   #define SSD1322_256_64_1
 /*=========================================================================*/
 
-#if defined SSD1322_256_64
+#if defined SSD1322_256_64_4
   #define SSD1322_LCDWIDTH                  256
   #define SSD1322_LCDHEIGHT                 64
+  #define SSD1322_BITS_PER_PIXEL			4
+#endif
+
+#if defined SSD1322_256_64_1
+  #define SSD1322_LCDWIDTH                  256
+  #define SSD1322_LCDHEIGHT                 64
+  #define SSD1322_BITS_PER_PIXEL			1
 #endif
 
 #define SSD1322_SETCOMMANDLOCK 0xFD

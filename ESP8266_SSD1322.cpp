@@ -50,22 +50,31 @@ All text above, and the splash screen must be included in any redistribution
 #endif
 
 // the memory buffer for the LCD
-static uint8_t buffer[SSD1322_LCDHEIGHT * SSD1322_LCDWIDTH / 2] = { 0x00 };
+static uint8_t buffer[SSD1322_LCDHEIGHT * SSD1322_LCDWIDTH / (8 / SSD1322_BITS_PER_PIXEL)] = { 0x00 };
 
 // the most basic function, set a single pixel
 void ESP8266_SSD1322::drawPixel(int16_t x, int16_t y, uint16_t gscale) {
 	if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
 		return;
 
+#ifdef SSD1322_256_64_4 // 4 bits per pixel
 	register uint8_t mask = ((x % 2) ? gscale : gscale << 4);
 	register uint8_t *pBuf = &buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))];
 	register uint8_t b1 = *pBuf;
 	b1 &= (x % 2) ? 0xF0 : 0x0F; // cleardown nibble to be replaced
-
 	// write our value in
 	*pBuf++ = b1 | mask;
+#endif
+#ifdef SSD1322_256_64_1 // 1 bit per pixel
+	register uint8_t *pBuf = &buffer[(x >> 3) + (y * (SSD1322_LCDWIDTH / 8))];
+	switch (gscale)
+    {
+		case WHITE:		*pBuf |=  (0x80 >> (x%8)); break;
+		case BLACK:		*pBuf &= ~(0x80 >> (x%8)); break;
+		case INVERSE:	*pBuf ^=  (0x80 >> (x%8)); break;
+    }
+#endif
 
-//	buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))] |= ((x % 2) ? gscale : gscale << 4);
 }
 ESP8266_SSD1322::ESP8266_SSD1322(int8_t SID, int8_t SCLK, int8_t DC,
 		int8_t RST, int8_t CS) :
@@ -125,7 +134,7 @@ void ESP8266_SSD1322::begin(uint8_t i2caddr, bool reset) {
 		digitalWrite(rst, HIGH);
 	}
 
-#if defined SSD1322_256_64
+//#ifdef SSD1322_256_64
 
 	ssd1322_command(SSD1322_SETCOMMANDLOCK);// 0xFD
 	ssd1322_data(0x12);// Unlock OLED driver IC
@@ -187,7 +196,7 @@ void ESP8266_SSD1322::begin(uint8_t i2caddr, bool reset) {
 
 	ssd1322_command(SSD1322_EXITPARTIALDISPLAY);// 0xA9
 
-#endif
+//#endif
 	//Clear down image ram before opening display
 	fill(0x00);
 
@@ -337,16 +346,48 @@ void ESP8266_SSD1322::display() {
 
     ssd1322_command(SSD1322_WRITERAM);
 
-    register uint16_t bufSize = (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 2); // bytes
+    register uint16_t bufSize = (SSD1322_LCDHEIGHT * SSD1322_LCDWIDTH / (8 / SSD1322_BITS_PER_PIXEL)); // bytes
 	register uint8_t *pBuf = buffer;
+
+#ifdef SSD1322_256_64_4
 
 	// Write as quick as possible 64 bits at a time
 	ssd1322_dataBytes(pBuf, bufSize);
+#endif
+#ifdef SSD1322_256_64_1
+	uint16_t srcIndex = 0;
+
+	while (srcIndex < bufSize)
+	{
+		uint8_t destIndex = 0;
+		uint8_t destArray[64] = {0};
+
+		while (destIndex < 64)
+		{
+			uint8_t mask = 0x80;
+
+			while (mask > 0)
+			{
+				// upper nibble
+				destArray[destIndex] |= (pBuf[srcIndex] & mask) ? 0xf0 : 0x00;
+				//shift mask to next bit, but this goes into lower nibble.
+				mask >>= 1;
+				destArray[destIndex] |= (pBuf[srcIndex] & mask) ? 0x0f : 0x00;
+
+				destIndex++;
+				mask >>= 1;
+			}
+			srcIndex++;
+		}
+		// Send to display here.
+		ssd1322_dataBytes(destArray, 64);
+	}
+#endif
 }
 
 // clear everything
 void ESP8266_SSD1322::clearDisplay(void) {
-	memset(buffer, 0, (SSD1322_LCDWIDTH * SSD1322_LCDHEIGHT / 2));
+	memset(buffer, 0, (SSD1322_LCDHEIGHT * SSD1322_LCDWIDTH / (8 / SSD1322_BITS_PER_PIXEL)));
 }
 
 inline void ESP8266_SSD1322::fastSPIwrite(uint8_t d) {
@@ -427,14 +468,15 @@ void ESP8266_SSD1322::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
 	}
 
 	// set up the pointer for  movement through the buffer
-	register uint8_t *pBuf = buffer;
+#ifdef SSD1322_256_64_4
+
 	// adjust the buffer pointer for the current row
+	register uint8_t *pBuf = buffer;
 	pBuf += (x >> 1) + (y * (SSD1322_LCDWIDTH / 2));
 
 	register uint8_t oddmask = color;
 	register uint8_t evenmask = (color << 4);
 	register uint8_t fullmask = (color << 4) + color;
-
 	uint8_t byteLen = w / 2;
 
 	if (((x % 2) == 0) && ((w % 2) == 0))  // Start at even and length is even
@@ -464,8 +506,6 @@ void ESP8266_SSD1322::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
 
 	if (((x % 2) == 0) && ((w % 2) == 1)) // Start at even and length is odd
 	{
-//		Serial.println("Start at even and length is odd");
-
 		while (byteLen--)
 		{
 			*pBuf++ = fullmask;
@@ -499,8 +539,114 @@ void ESP8266_SSD1322::drawFastHLineInternal(int16_t x, int16_t y, int16_t w,
 		*pBuf++ = b1 | evenmask;
 		return;
 	}
+#endif
+#ifdef SSD1322_256_64_1
+	register uint8_t *pBuf = &buffer[(x >> 3) + (y * (SSD1322_LCDWIDTH / 8))];
+	// do the first partial byte, if necessary - this requires some masking
+	register uint8_t mod = (x % 8);
 
-	return;
+//Serial.println("** START ***");
+//Serial.print("mod=");
+//Serial.println(mod);
+	if (mod)
+	{
+		// mask off the high n bits we want to set
+		mod = 8-mod;
+
+//Serial.print("mod=");
+//Serial.println(mod);
+		// note - lookup table results in a nearly 10% performance improvement in fill* functions
+		// register uint8_t mask = ~(0xFF >> (mod));
+		static uint8_t premask[8] = {0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F };
+		register uint8_t mask = premask[mod];
+
+		// adjust the mask if we're not going to reach the end of this byte
+		if( w < mod)
+		{
+//Serial.println("here 2");
+			mask &= (0XFF << (mod - w));
+//Serial.print("mask=");
+//Serial.println((int)mask);
+		}
+
+		switch (color)
+		{
+			case WHITE:   *pBuf |=  mask;  break;
+			case BLACK:   *pBuf &= ~mask;  break;
+			case INVERSE: *pBuf ^=  mask;  break;
+		}
+
+		// fast exit if we're done here!
+		if(w < mod)
+		{
+			return;
+		}
+
+		w -= mod;
+
+		// adjust the buffer forward
+		pBuf++;
+	}
+
+
+	// write solid bytes while we can - effectively doing 8 rows at a time
+	if (w >= 8)
+	{
+		if (color == INVERSE)
+		{          // separate copy of the code so we don't impact performance of the black/white write version with an extra comparison per loop
+		  do
+		  {
+			  *pBuf=~(*pBuf);
+
+				// adjust the buffer forward
+				pBuf++;
+
+				// adjust h & y (there's got to be a faster way for me to do this, but this should still help a fair bit for now)
+				w -= 8;
+			  } while(w >= 8);
+		}
+		else
+		{
+//Serial.println("here 1");
+			// store a local value to work with
+			register uint8_t val = (color == WHITE) ? 255 : 0;
+
+			do
+			{
+//Serial.print("w=");
+//Serial.println(w);
+				// write our value in
+				*pBuf = val;
+
+				// adjust the buffer forward
+				pBuf++;
+
+				// adjust h & y (there's got to be a faster way for me to do this, but this should still help a fair bit for now)
+				w -= 8;
+			} while(w >= 8);
+		}
+	}
+
+	// now do the final partial byte, if necessary
+	if (w)
+	{
+		mod = w % 8;
+//Serial.print("w%8=");
+//Serial.println(mod);
+		// this time we want to mask the low bits of the byte, vs the high bits we did above
+		// register uint8_t mask = (1 << mod) - 1;
+		// note - lookup table results in a nearly 10% performance improvement in fill* functions
+		static uint8_t postmask[8] = {0x00, 0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE };
+		register uint8_t mask = postmask[mod];
+		switch (color)
+		{
+			case WHITE:   *pBuf |=  mask;  break;
+			case BLACK:   *pBuf &= ~mask;  break;
+			case INVERSE: *pBuf ^=  mask;  break;
+		}
+	}
+#endif
+
 }
 
 void ESP8266_SSD1322::drawFastVLine(int16_t x, int16_t y, int16_t h,
@@ -569,6 +715,7 @@ void ESP8266_SSD1322::drawFastVLineInternal(int16_t x, int16_t __y,
 	register uint8_t y = __y;
 	register uint8_t h = __h;
 
+#ifdef SSD1322_256_64_4
 	// set up the pointer for fast movement through the buffer
 	register uint8_t *pBuf = buffer;
 	// adjust the buffer pointer for the current row
@@ -588,6 +735,28 @@ void ESP8266_SSD1322::drawFastVLineInternal(int16_t x, int16_t __y,
 		pBuf += SSD1322_LCDWIDTH / 2;
 
 	};
+#endif
+#ifdef SSD1322_256_64_1
+	register uint8_t *pBuf = &buffer[(x >> 3) + (y * (SSD1322_LCDWIDTH / 8))];
+	register uint8_t mod = (x % 8);
+
+
+	static uint8_t postmask[8] = {0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
+	register uint8_t mask = postmask[mod];
+
+	while (h--)
+	{
+		switch (color)
+		{
+			case WHITE:		*pBuf |=  mask;	break;
+			case BLACK:		*pBuf &= ~mask; break;
+			case INVERSE:	*pBuf ^=  mask; break;
+		}
+
+		// adjust the buffer forward to next row worth of data
+		pBuf += SSD1322_LCDWIDTH / 8;
+	}
+#endif
 }
 
 /**
@@ -633,6 +802,8 @@ void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap
 	if (x < 0 || x >= WIDTH) {
 		return;
 	}
+
+	TODO TODO TODO
 
 	// calc start pos in the buffer
 	register uint8_t *pBuf = &buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))];
