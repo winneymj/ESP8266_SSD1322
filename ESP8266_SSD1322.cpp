@@ -803,7 +803,7 @@ void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap
 		return;
 	}
 
-	TODO TODO TODO
+	// TODO TODO TODO
 
 	// calc start pos in the buffer
 	register uint8_t *pBuf = &buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))];
