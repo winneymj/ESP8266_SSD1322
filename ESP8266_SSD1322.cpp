@@ -793,8 +793,8 @@ void ESP8266_SSD1322::fill(uint8_t colour)
 
 /***************************************************************************************
 ** Function name:           fastDrawBitmap
-** Descriptions:            draw a bitmap fast.  Right now limits are bitmap is
-** even size on the X and must be placed evenly on the x coordinate
+** Descriptions:            draw a bitmap fast.  Right now limits are bitmap must be mutiple
+** of 8 bits in width.
 ***************************************************************************************/
 void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint8_t color)
 {
@@ -803,8 +803,8 @@ void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap
 		return;
 	}
 
-	// TODO TODO TODO
-
+#ifdef SSD1322_256_64_4
+	// TODO - NEEDS SOME WORK TO HANDLE XPOS that is not multiple of 8 bits
 	// calc start pos in the buffer
 	register uint8_t *pBuf = &buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))];
 	register uint8_t wInBytes = w >> 1; // Divide by 2, as 2 pixels per byte (4 bits per pixel)
@@ -821,6 +821,79 @@ void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap
 
 		pBuf += (SSD1322_LCDWIDTH / 2) - wInBytes; // Move buffer position to next row
 	}
+#endif
+#ifdef SSD1322_256_64_1
+	// calc start pos in the buffer
+	register uint8_t *pBuf = &buffer[(x >> 3) + (y * (SSD1322_LCDWIDTH / 8))];
+	// Divide by 8, as 8 pixels per byte (1 bit per pixel) unless this not, then need to add 1 extra byte
+	register uint8_t wInBytes = ((w % 8) > 0) ? (w >> 3) + 1 : (w >> 3);
+	register uint16_t bytePos = 0;
+
+	register uint8_t mod = (x % 8);
+	register uint8_t bmap;
+	register uint8_t mask;
+
+	if (mod > 0)
+	{
+		// loop the height
+		for (int lh = 0; lh < h; lh++)
+		{
+			register uint8_t shftedOut = 0;
+
+			// loop the width
+			for (int lw = 0; lw < wInBytes; lw++)
+			{
+				// Get byte from bitmap to display
+				bmap = pgm_read_byte(bitmap + bytePos++);
+				// Shift the byte to display at correct x position.
+				mask = bmap >> mod;
+				// Move in the bytes from the shifted out of previous
+				mask |= shftedOut;
+
+				// Display this image byte
+				switch (color)
+				{
+					case WHITE:		*pBuf++ |=  mask;	break;
+					case BLACK:		*pBuf++ &= ~mask; break;
+					case INVERSE:	*pBuf++ ^=  mask; break;
+				}
+				// Now get the part of the bitmap that was shifted
+				// off the right and needs to be masked into the
+				// next byte over.
+				shftedOut = bmap << (8-mod);
+			}
+
+			// We need to handle the shifted bytes into the byte beyond
+			// the width of the bitmap.
+
+			// If need to write this to the next byte of the display
+			// Display this image byte
+			switch (color)
+			{
+				case WHITE:		*pBuf++ |=  shftedOut;	break;
+				case BLACK:		*pBuf++ &= ~shftedOut; break;
+				case INVERSE:	*pBuf++ ^=  shftedOut; break;
+			}
+
+			pBuf += (SSD1322_LCDWIDTH / 8) - (wInBytes + 1); // Move buffer position to next row
+		}
+	}
+	else
+	{
+		// loop the height
+		for (int lh = 0; lh < h; lh++)
+		{
+			// loop the width
+			for (int lw = 0; lw < wInBytes; lw++)
+			{
+				*pBuf++ = pgm_read_byte(bitmap + bytePos++);
+			}
+
+			pBuf += (SSD1322_LCDWIDTH / 8) - wInBytes; // Move buffer position to next row
+		}
+	}
+#endif
+
 }
 
 /***************************************************************************************
@@ -1156,6 +1229,121 @@ int ESP8266_SSD1322::drawFloat(float floatNumber, int decimal, int poX, int poY,
         decy -= temp;
     }
     return sumX;
+}
+
+inline static byte readPixels(const byte* loc, bool invert)
+{
+	byte pixels = pgm_read_byte(loc);
+	if(invert)
+	pixels = ~pixels;
+	return pixels;
+}
+
+// Ultra fast bitmap drawing
+// Only downside is that height must be a multiple of 8, otherwise it gets rounded down to the nearest multiple of 8
+// Drawing bitmaps that are completely on-screen and have a Y co-ordinate that is a multiple of 8 results in best performance
+// PS - Sorry about the poorly named variables ;_;
+// Optimize: Use a local variable temp buffer then apply to global variable OLED buffer?
+void ESP8266_SSD1322::ultraFastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, uint8_t w, uint8_t h, uint8_t color, bool invert)
+//void ESP8266_SSD1322::ultraFastDrawBitmap(s_image* image)
+{
+//	byte x = x;
+	byte yy = y;
+//	const byte* bitmap = bitmap;
+//	byte w = image->width;
+//	byte h = image->height;
+	//	byte colour = image->foreColour;
+//	bool invert = image->invert;
+	//	byte offsetY = image->offsetY;
+	byte offsetY = 0;
+
+	// Apply animation offset
+	//	yy += animation_offsetY();
+
+	//
+//	byte y = yy - offsetY;
+
+	//
+	byte h2 = h / 8;
+
+	//
+	byte pixelOffset = (y % 8);
+
+	byte thing3 = (yy+h);
+
+	//
+	for(byte hh=0;hh<h2;hh++)
+	{
+		//
+		byte hhh = (hh*8) + y;
+		byte hhhh = hhh + 8;
+
+		//
+		if(offsetY && (hhhh < yy || hhhh > SSD1322_LCDWIDTH || hhh > thing3))
+		continue;
+
+		//
+		byte offsetMask = 0xFF;
+		if(offsetY)
+		{
+			if(hhh < yy)
+			offsetMask = (0xFF<<(yy-hhh));
+			else if(hhhh > thing3)
+			offsetMask = (0xFF>>(hhhh-thing3));
+		}
+
+		unsigned int aa = ((hhh / 8) * SSD1322_LCDWIDTH);
+
+		// If() outside of loop makes it faster (doesn't have to kee re-evaluating it)
+		// Downside is code duplication
+		if(!pixelOffset && hhh < SSD1322_LCDWIDTH)
+		{
+			//
+			for(byte ww=0;ww<w;ww++)
+			{
+				// Workout X co-ordinate in frame buffer to place next 8 pixels
+				byte xx = ww + x;
+
+				// Stop if X co-ordinate is outside the frame
+				if(xx >= SSD1322_LCDWIDTH)
+				continue;
+
+				// Read pixels
+				byte pixels = readPixels((bitmap + (hh*w)) + ww, invert) & offsetMask;
+
+				buffer[xx + aa] |= pixels;
+			}
+		}
+		else
+		{
+			unsigned int aaa = ((hhhh / 8) * SSD1322_LCDWIDTH);
+
+			//
+			for(byte ww=0;ww<w;ww++)
+			{
+				// Workout X co-ordinate in frame buffer to place next 8 pixels
+				byte xx = ww + x;
+
+				// Stop if X co-ordinate is outside the frame
+				if(xx >= SSD1322_LCDWIDTH)
+				continue;
+
+				// Read pixels
+				byte pixels = readPixels((bitmap + (hh*w)) + ww, invert) & offsetMask;
+
+				//
+				if(hhh < SSD1322_LCDHEIGHT)
+				{
+					buffer[xx + aa] |= pixels << pixelOffset;
+				}
+				//
+				if(hhhh < SSD1322_LCDHEIGHT)
+				{
+					buffer[xx + aaa] |= pixels >> (8 - pixelOffset);
+				}
+			}
+		}
+	}
 }
 
 /*
