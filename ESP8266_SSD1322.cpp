@@ -916,8 +916,10 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
 //     gap = 1;
 //   }
 #ifdef LOAD_FONT2
+
+
    if (size == 2) {
-     flash_address = pgm_read_dword(&chrtbl_f16[uniCode]);
+	 flash_address = pgm_read_dword(&chrtbl_f16[uniCode]);
      width = pgm_read_byte(widtbl_f16+uniCode);
      height = chr_hgt_f16;
      gap = 1;
@@ -960,67 +962,57 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
    }
 #endif
 
-int w = (width+7)/8;
-int pX      = 0;
-int pY      = y;
-int color   = 0;
-byte line = 0;
+	int w = (width+7)/8;
+	int pX      = 0;
+	int pY      = y;
+	int color   = 0;
+	byte line = 0;
 
-//fillRect(x,pY,width+gap,height,textbgcolor);
-
-//Serial.print("height=");
-//Serial.println(height);
-//Serial.print("width=");
-//Serial.println(width);
-//Serial.print("w=");
-//Serial.println(w);
-
-for(int i=0; i<height; i++)
-{
-  if (textcolor != textbgcolor) {
-    if (textsize == 1) drawFastHLine(x, pY, width+gap, textbgcolor);
-    else fillRect(x, pY, (width+gap)*textsize, textsize, textbgcolor);
-  }
-  for (int k = 0;k < w; k++)
-  {
-//Serial.println("loop");
-    line = pgm_read_byte(flash_address+w*i+k);
-    if(line) {
-      if (textsize==1){
-        pX = x + k*8;
-        if(line & 0x80) drawPixel(pX, pY, textcolor);
-        if(line & 0x40) drawPixel(pX+1, pY, textcolor);
-        if(line & 0x20) drawPixel(pX+2, pY, textcolor);
-        if(line & 0x10) drawPixel(pX+3, pY, textcolor);
-        if(line & 0x8) drawPixel(pX+4, pY, textcolor);
-        if(line & 0x4) drawPixel(pX+5, pY, textcolor);
-        if(line & 0x2) drawPixel(pX+6, pY, textcolor);
-        if(line & 0x1) drawPixel(pX+7, pY, textcolor);
-      }
-       else {
-        pX = x + k*8*textsize;
-        if(line & 0x80) fillRect(pX, pY, textsize, textsize, textcolor);
-        if(line & 0x40) fillRect(pX+textsize, pY, textsize, textsize, textcolor);
-        if(line & 0x20) fillRect(pX+2*textsize, pY, textsize, textsize, textcolor);
-        if(line & 0x10) fillRect(pX+3*textsize, pY, textsize, textsize, textcolor);
-        if(line & 0x8) fillRect(pX+4*textsize, pY, textsize, textsize, textcolor);
-        if(line & 0x4) fillRect(pX+5*textsize, pY, textsize, textsize, textcolor);
-        if(line & 0x2) fillRect(pX+6*textsize, pY, textsize, textsize, textcolor);
-        if(line & 0x1) fillRect(pX+7*textsize, pY, textsize, textsize, textcolor);
-      }
-    }
-  }
-  pY+=textsize;
-}
-
-//Serial.print("return:width=");
-//Serial.println(width);
-//Serial.print("return:gap=");
-//Serial.println(gap);
-//Serial.print("return:textsize=");
-//Serial.println(textsize);
-
-return (width+gap)*textsize;        // x +
+	for(int i=0; i<height; i++)
+	{
+	  if (textcolor != textbgcolor)
+	  {
+		if (textsize == 1)
+		{
+			drawFastHLine(x, pY, width+gap, textbgcolor);
+		}
+		else
+		{
+			fillRect(x, pY, (width+gap)*textsize, textsize, textbgcolor);
+		}
+	  }
+	  for (int k = 0;k < w; k++)
+	  {
+		line = pgm_read_byte(flash_address+w*i+k);
+		if(line)
+		{
+		  if (textsize==1){
+			pX = x + k*8;
+			if(line & 0x80) drawPixel(pX, pY, textcolor);
+			if(line & 0x40) drawPixel(pX+1, pY, textcolor);
+			if(line & 0x20) drawPixel(pX+2, pY, textcolor);
+			if(line & 0x10) drawPixel(pX+3, pY, textcolor);
+			if(line & 0x8) drawPixel(pX+4, pY, textcolor);
+			if(line & 0x4) drawPixel(pX+5, pY, textcolor);
+			if(line & 0x2) drawPixel(pX+6, pY, textcolor);
+			if(line & 0x1) drawPixel(pX+7, pY, textcolor);
+		  }
+		   else {
+			pX = x + k*8*textsize;
+			if(line & 0x80) fillRect(pX, pY, textsize, textsize, textcolor);
+			if(line & 0x40) fillRect(pX+textsize, pY, textsize, textsize, textcolor);
+			if(line & 0x20) fillRect(pX+2*textsize, pY, textsize, textsize, textcolor);
+			if(line & 0x10) fillRect(pX+3*textsize, pY, textsize, textsize, textcolor);
+			if(line & 0x8) fillRect(pX+4*textsize, pY, textsize, textsize, textcolor);
+			if(line & 0x4) fillRect(pX+5*textsize, pY, textsize, textsize, textcolor);
+			if(line & 0x2) fillRect(pX+6*textsize, pY, textsize, textsize, textcolor);
+			if(line & 0x1) fillRect(pX+7*textsize, pY, textsize, textsize, textcolor);
+		  }
+		}
+	  }
+	  pY+=textsize;
+	}
+	return (width+gap)*textsize;        // x +
 }
 
 /***************************************************************************************
@@ -1050,20 +1042,23 @@ int ESP8266_SSD1322::drawChar(char c, int x, int y, int size)
 ***************************************************************************************/
 int ESP8266_SSD1322::drawString(char *string, int poX, int poY, int size)
 {
+#ifdef LOAD_GLCD
+	// Use Adafruit font 5x7
+   if (size == 0)
+   {
+	   setCursor(poX, poY);
+	   print(string);
+	   return 0;
+   }
+#endif
     int sumX = 0;
 
     while(*string)
     {
-//Serial.print("drawString:*string=");
-//Serial.println(*string);
         int xPlus = drawChar(*string, poX, poY, size);
-//Serial.print("drawString:xPlus=");
-//Serial.println(xPlus);
         sumX += xPlus;
         *string++;
         poX += xPlus;                            /* Move cursor right       */
-//Serial.print("drawString:sumX=");
-//Serial.println(sumX);
     }
     return sumX;
 }
@@ -1074,6 +1069,18 @@ int ESP8266_SSD1322::drawString(char *string, int poX, int poY, int size)
 ***************************************************************************************/
 int ESP8266_SSD1322::drawCentreString(char *string, int dX, int poY, int size)
 {
+#ifdef LOAD_GLCD
+	// Use Adafruit font fixed 5x7
+   if (size == 0)
+   {
+	   int len = strlen(string) * (5 + 1);
+	   int poX = dX - len / 2;
+	   setCursor(poX, poY);
+	   print(string);
+	   return 0;
+   }
+#endif
+
     int sumX = 0;
     int len = 0;
     char *pointer = string;
