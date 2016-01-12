@@ -49,13 +49,44 @@ All text above, and the splash screen must be included in any redistribution
   #include "Font7s.h"
 #endif
 
+#ifdef LOAD_FONT8
+  #include "Font10.h"
+#endif
+
 // the memory buffer for the LCD
 static uint8_t buffer[SSD1322_LCDHEIGHT * SSD1322_LCDWIDTH / (8 / SSD1322_BITS_PER_PIXEL)] = { 0x00 };
 
 // the most basic function, set a single pixel
-void ESP8266_SSD1322::drawPixel(int16_t x, int16_t y, uint16_t gscale) {
-	if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
-		return;
+void ESP8266_SSD1322::drawPixel(int16_t x, int16_t y, uint16_t gscale)
+{
+//Serial.print("x=");
+//Serial.println(x);
+//Serial.print("y=");
+//Serial.println(y);
+  // check rotation, move pixel around if necessary
+  switch (getRotation())
+  {
+    case 1:
+      swap(x, y);
+      x = WIDTH - x - 1;
+    break;
+    case 2:
+      x = WIDTH - x - 1;
+      y = HEIGHT - y - 1;
+    break;
+    case 3:
+      swap(x, y);
+      y = HEIGHT - y - 1;
+    break;
+  }
+
+  if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
+    return;
+
+//Serial.print("x2=");
+//Serial.println(x);
+//  Serial.print("y2=");
+//  Serial.println(y);
 
 #ifdef SSD1322_256_64_4 // 4 bits per pixel
 	register uint8_t mask = ((x % 2) ? gscale : gscale << 4);
@@ -66,13 +97,13 @@ void ESP8266_SSD1322::drawPixel(int16_t x, int16_t y, uint16_t gscale) {
 	*pBuf++ = b1 | mask;
 #endif
 #ifdef SSD1322_256_64_1 // 1 bit per pixel
-	register uint8_t *pBuf = &buffer[(x >> 3) + (y * (SSD1322_LCDWIDTH / 8))];
-	switch (gscale)
-    {
-		case WHITE:		*pBuf |=  (0x80 >> (x%8)); break;
-		case BLACK:		*pBuf &= ~(0x80 >> (x%8)); break;
-		case INVERSE:	*pBuf ^=  (0x80 >> (x%8)); break;
-    }
+  register uint8_t *pBuf = &buffer[(x >> 3) + (y * (SSD1322_LCDWIDTH / 8))];
+  switch (gscale)
+  {
+    case WHITE:	*pBuf |=  (0x80 >> (x%8)); break;
+    case BLACK:	*pBuf &= ~(0x80 >> (x%8)); break;
+    case INVERSE:	*pBuf ^=  (0x80 >> (x%8)); break;
+  }
 #endif
 
 }
@@ -791,6 +822,257 @@ void ESP8266_SSD1322::fill(uint8_t colour)
     delay(0);
 }
 
+#ifdef SSD1322_256_64_1
+
+void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint8_t color)
+{
+//Serial.println("-------fastDrawBitmap----------");
+
+  // do nothing if we're off the left or right side of the screen
+  if ((x + w) < 0 || x >= SSD1322_LCDWIDTH)
+  {
+//cout << "all off left/right" << endl;
+    return;
+  }
+
+  // Do nothing if off top or bottom
+  if (y + h < 0 || y >= SSD1322_LCDHEIGHT)
+  {
+//cout << "all off top/bottom" << endl;
+    return;
+  }
+
+  register int8_t xDiv8 = (x / 8);
+  register int8_t wDiv8 = (w / 8);
+
+//Serial.print("xDiv8=");
+//Serial.println(xDiv8);
+
+  // calc start pos in the buffer
+  register uint8_t *pBuf = &buffer[xDiv8 + (y * (SSD1322_LCDWIDTH / 8))];
+  // Divide by 8, as 8 pixels per byte (1 bit per pixel) unless this not, then need to add 1 extra byte
+  register uint8_t wInBytes = ((w % 8) > 0) ? wDiv8 + 1 : wDiv8;
+  register uint8_t wStartByte = (xDiv8 < 0 ? abs(xDiv8) : 0);
+  register uint16_t hInRows = min(SSD1322_LCDHEIGHT - y, h);
+  register uint16_t bytePos = 0;
+  pBuf += wStartByte;  // Move start of buffer up if X < 0
+//    wInBytes -= wStartByte;
+  register int16_t mod = x % 8;
+  register uint8_t bmap = 0;
+  register uint8_t mask;
+
+//    bytePos += wStartByte;
+//Serial.print("wInBytes=");
+//Serial.println(wInBytes);
+//Serial.print("wStartByte=");
+//Serial.println(wStartByte);
+//Serial.print("mod=");
+//Serial.println(mod);
+//Serial.print("pBuf=");
+//Serial.println(pBuf - buffer);
+
+  if (x < 0) // x is less than zero
+  {
+//Serial.print("wInBytes=");
+//Serial.println(wInBytes);
+//Serial.print("wStartByte=");
+//Serial.println(wStartByte);
+//Serial.print("mod=");
+//Serial.println(mod);
+//Serial.print("pBuf=");
+//Serial.println(pBuf - buffer);
+
+    bytePos += wStartByte;
+
+    mod = abs(mod);
+//Serial.print("mod now=");
+//Serial.println(mod);
+    // loop the height
+    for (int lh = 0; lh < hInRows; lh++)
+    {
+      bool rowTerminated = false;
+      register uint8_t shftedOut = 0;
+
+      // loop the width
+      for (int lw = 0; lw < wInBytes; lw++)
+      {
+//Serial.print("lw=");
+//Serial.println(lw);
+
+	if (lw >= wStartByte)
+	{
+//Serial.println("lw >= wStartByte");
+//Serial.print("pBuf=");
+//Serial.println(pBuf - buffer);
+//Serial.print("bytePos=");
+//Serial.println(bytePos);
+
+	  // Get byte from bitmap to display
+	  bmap = pgm_read_byte(bitmap + bytePos++);
+	  // Shift the byte to display at correct x position.
+	  mask = bmap << mod;
+
+	  if (lw != (wInBytes - 1))
+	  {
+//Serial.println("dont do last");
+	    bmap = pgm_read_byte(bitmap + bytePos); // Get next byte in image
+	    shftedOut = bmap >> (8-mod);
+	    // Move in the bytes from the shifted out of previous
+	    mask |= shftedOut;
+	  }
+
+	// Display this image byte
+	  switch (color)
+	  {
+	    case WHITE:    *pBuf++ |=  mask; break;
+	    case BLACK:    *pBuf++ &= ~mask; break;
+	    case INVERSE:  *pBuf++ ^=  mask; break;
+	  }
+	}
+      }//for (int lw = 0; lw < wInBytes; lw++)
+//Serial.println("Row done");
+
+      pBuf += (SSD1322_LCDWIDTH / 8) - wInBytes + wStartByte; // Move buffer position to next row
+
+      bytePos += wStartByte;
+    }//for (int lh = 0; lh < hInRows; lh++)
+  }
+  else
+  {
+    if (mod != 0)
+    {
+//Serial.print("---- GREATER THAN ZERO ----");
+      // loop the height
+      for (int lh = 0; lh < hInRows; lh++)
+      {
+	bool rowTerminated = false;
+	register uint8_t shftedOut = 0;
+
+	// loop the width
+	for (int lw = 0; lw < wInBytes; lw++)
+	{
+//Serial.print("pBuf=");
+//Serial.println(pBuf - buffer);
+//Serial.print("bytePos=");
+//Serial.println(bytePos);
+
+	  // Get byte from bitmap to display
+	  bmap = pgm_read_byte(bitmap + bytePos++);
+	  // Shift the byte to display at correct x position.
+	  mask = bmap >> mod;
+	  // Move in the bytes from the shifted out of previous
+	  mask |= shftedOut;
+
+//Serial.print("bmap=");
+//Serial.println(bmap);
+//Serial.print("mask=");
+//Serial.println(mask);
+	  // Display this image byte
+	  switch (color)
+	  {
+	    case WHITE:    *pBuf++ |=  mask; break;
+	    case BLACK:    *pBuf++ &= ~mask; break;
+	    case INVERSE:  *pBuf++ ^=  mask; break;
+	  }
+
+	  // Somehow look at pBuf and see if this is now gone off the screen
+	  // to the right to start with.
+	  if ((pBuf - buffer) % (SSD1322_LCDWIDTH / 8) == 0)
+	  {
+//Serial.print("rowend ");
+//Serial.println(pBuf - buffer);
+	    pBuf += wInBytes - (lw + 1); // Move buffer up
+	    bytePos += wInBytes - (lw + 1);
+	    rowTerminated = true;
+	    break;
+	  }
+
+	  // Now get the part of the bitmap that was shifted
+	  // off the right and needs to be masked into the
+	  // next byte over.
+	  shftedOut = bmap << (8-mod);
+	}//for (int lw = 0; lw < wInBytes; lw++)
+//Serial.println("Row done");
+
+	// We need to handle the shifted bytes into the byte beyond
+	// the width of the bitmap.
+
+	if (!rowTerminated)
+	{
+//Serial.print("pBuf=");
+//Serial.println(pBuf - buffer);
+//Serial.print("bytePos=");
+//Serial.println(bytePos);
+
+	  // If need to write this to the next byte of the display
+	  // Display this image byte
+	  switch (color)
+	  {
+	    case WHITE:    *pBuf++ |=  shftedOut; break;
+	    case BLACK:    *pBuf++ &= ~shftedOut; break;
+	    case INVERSE:  *pBuf++ ^=  shftedOut; break;
+	  }
+
+	  pBuf += (SSD1322_LCDWIDTH / 8) - (wInBytes + 1); // Move buffer position to next row
+	}
+	else
+	{
+	  pBuf += (SSD1322_LCDWIDTH / 8) - wInBytes; // Move buffer position to next row
+	}//if (!rowTerminated)
+
+	bytePos += wStartByte;
+      }//for (int lh = 0; lh < hInRows; lh++)
+    }
+    else //if (mod != 0)
+    {
+//Serial.println("---- MOD == 0 ----");
+      // loop the height
+      for (int lh = 0; lh < hInRows; lh++)
+      {
+	bool offScreen = false;
+	// loop the width
+	for (int lw = 0; lw < wInBytes; lw++)
+	{
+//Serial.print("lw=");
+//Serial.println(lw);
+// Don't draw data off the screen
+	  if (lw >= wStartByte)
+	  {
+//Serial.println("lw >= wStartByte");
+//
+//Serial.print("pBuf=");
+//Serial.println(pBuf - buffer);
+//Serial.print("bytePos=");
+//Serial.println(bytePos);
+
+	    *pBuf++ = pgm_read_byte(bitmap + bytePos++);
+	  }
+	  else
+	  {
+	    bytePos++;  // Move up the bitmap
+	  }
+
+	  if ((pBuf - buffer) % (SSD1322_LCDWIDTH / 8) == 0)
+	  {
+//Serial.print("rowend=");
+//Serial.println(pBuf - buffer);
+	    pBuf += wInBytes - (lw + 1); // Move buffer up
+	    bytePos += wInBytes - (lw + 1);
+	    break;
+	  }//if ((pBuf - buffer) % (SSD1322_LCDWIDTH / 8) == 0)
+	}//for (int lw = 0; lw < wInBytes; lw++)
+
+//Serial.println("Row done");
+	pBuf += (SSD1322_LCDWIDTH / 8) - wInBytes + wStartByte; // Move buffer position to next row
+//	bytePos += wStartByte;
+      }//for (int lh = 0; lh < hInRows; lh++)
+    }//if (mod != 0)
+  }//if (x < 0)
+}
+
+#endif
+
+#ifdef SSD1322_256_64_4
 /***************************************************************************************
 ** Function name:           fastDrawBitmap
 ** Descriptions:            draw a bitmap fast.  Right now limits are bitmap must be mutiple
@@ -798,103 +1080,31 @@ void ESP8266_SSD1322::fill(uint8_t colour)
 ***************************************************************************************/
 void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint8_t color)
 {
-	// do nothing if we're off the left or right side of the screen
-	if (x < 0 || x >= WIDTH) {
-		return;
-	}
+  // do nothing if we're off the left or right side of the screen
+  if (x < 0 || x >= WIDTH)
+  {
+	  return;
+  }
 
-#ifdef SSD1322_256_64_4
-	// TODO - NEEDS SOME WORK TO HANDLE XPOS that is not multiple of 8 bits
-	// calc start pos in the buffer
-	register uint8_t *pBuf = &buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))];
-	register uint8_t wInBytes = w >> 1; // Divide by 2, as 2 pixels per byte (4 bits per pixel)
-	uint16_t bitPos = 0;
+  // TODO - NEEDS SOME WORK TO HANDLE XPOS that is not multiple of 8 bits
+  // calc start pos in the buffer
+  register uint8_t *pBuf = &buffer[(x >> 1) + (y * (SSD1322_LCDWIDTH / 2))];
+  register uint8_t wInBytes = w >> 1; // Divide by 2, as 2 pixels per byte (4 bits per pixel)
+  uint16_t bitPos = 0;
 
-	// loop the height
-	for (int lh = 0; lh < h; lh++)
-	{
-		// loop the width
-		for (int lw = 0; lw < wInBytes; lw++)
-		{
-			*pBuf++ = pgm_read_byte(bitmap + bitPos++);
-		}
+  // loop the height
+  for (int lh = 0; lh < h; lh++)
+  {
+    // loop the width
+    for (int lw = 0; lw < wInBytes; lw++)
+    {
+      *pBuf++ = pgm_read_byte(bitmap + bitPos++);
+    }
 
-		pBuf += (SSD1322_LCDWIDTH / 2) - wInBytes; // Move buffer position to next row
-	}
-#endif
-#ifdef SSD1322_256_64_1
-	// calc start pos in the buffer
-	register uint8_t *pBuf = &buffer[(x >> 3) + (y * (SSD1322_LCDWIDTH / 8))];
-	// Divide by 8, as 8 pixels per byte (1 bit per pixel) unless this not, then need to add 1 extra byte
-	register uint8_t wInBytes = ((w % 8) > 0) ? (w >> 3) + 1 : (w >> 3);
-	register uint16_t bytePos = 0;
-
-	register uint8_t mod = (x % 8);
-	register uint8_t bmap;
-	register uint8_t mask;
-
-	if (mod > 0)
-	{
-		// loop the height
-		for (int lh = 0; lh < h; lh++)
-		{
-			register uint8_t shftedOut = 0;
-
-			// loop the width
-			for (int lw = 0; lw < wInBytes; lw++)
-			{
-				// Get byte from bitmap to display
-				bmap = pgm_read_byte(bitmap + bytePos++);
-				// Shift the byte to display at correct x position.
-				mask = bmap >> mod;
-				// Move in the bytes from the shifted out of previous
-				mask |= shftedOut;
-
-				// Display this image byte
-				switch (color)
-				{
-					case WHITE:		*pBuf++ |=  mask;	break;
-					case BLACK:		*pBuf++ &= ~mask; break;
-					case INVERSE:	*pBuf++ ^=  mask; break;
-				}
-				// Now get the part of the bitmap that was shifted
-				// off the right and needs to be masked into the
-				// next byte over.
-				shftedOut = bmap << (8-mod);
-			}
-
-			// We need to handle the shifted bytes into the byte beyond
-			// the width of the bitmap.
-
-			// If need to write this to the next byte of the display
-			// Display this image byte
-			switch (color)
-			{
-				case WHITE:		*pBuf++ |=  shftedOut;	break;
-				case BLACK:		*pBuf++ &= ~shftedOut; break;
-				case INVERSE:	*pBuf++ ^=  shftedOut; break;
-			}
-
-			pBuf += (SSD1322_LCDWIDTH / 8) - (wInBytes + 1); // Move buffer position to next row
-		}
-	}
-	else
-	{
-		// loop the height
-		for (int lh = 0; lh < h; lh++)
-		{
-			// loop the width
-			for (int lw = 0; lw < wInBytes; lw++)
-			{
-				*pBuf++ = pgm_read_byte(bitmap + bytePos++);
-			}
-
-			pBuf += (SSD1322_LCDWIDTH / 8) - wInBytes; // Move buffer position to next row
-		}
-	}
-#endif
-
+    pBuf += (SSD1322_LCDWIDTH / 2) - wInBytes; // Move buffer position to next row
+  }
 }
+#endif
 
 /***************************************************************************************
 ** Function name:           drawUnicode
@@ -902,6 +1112,7 @@ void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap
 ***************************************************************************************/
 int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
 {
+//Serial.println("drawUnicode:E");
    if (size) uniCode -= 32;
 
    uint8_t width = 0;
@@ -961,14 +1172,22 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
      gap = 2;
    }
 #endif
+#ifdef LOAD_FONT8
+   if (size == 8) {
+     flash_address = pgm_read_dword(&chrtbl_F10[uniCode]);
+     width = pgm_read_byte(widtbl_F10+uniCode);
+     height = chr_hgt_F10;
+     gap = gap_F10;
+   }
+#endif
 
 	int w = (width+7)/8;
-	int pX      = 0;
-	int pY      = y;
+	register int pX      = 0;
+	register int pY      = y;
 	int color   = 0;
 	byte line = 0;
 
-	for(int i=0; i<height; i++)
+	for(register int i=0; i<height; i++)
 	{
 	  if (textcolor != textbgcolor)
 	  {
@@ -981,13 +1200,15 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
 			fillRect(x, pY, (width+gap)*textsize, textsize, textbgcolor);
 		}
 	  }
-	  for (int k = 0;k < w; k++)
+	  for (register int k = 0;k < w; k++)
 	  {
 		line = pgm_read_byte(flash_address+w*i+k);
 		if(line)
 		{
 		  if (textsize==1){
 			pX = x + k*8;
+//Serial.print("pX=");
+//Serial.println(pX);
 			if(line & 0x80) drawPixel(pX, pY, textcolor);
 			if(line & 0x40) drawPixel(pX+1, pY, textcolor);
 			if(line & 0x20) drawPixel(pX+2, pY, textcolor);
@@ -1012,6 +1233,7 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
 	  }
 	  pY+=textsize;
 	}
+//Serial.println("drawUnicode:X");
 	return (width+gap)*textsize;        // x +
 }
 
@@ -1033,7 +1255,18 @@ int ESP8266_SSD1322::drawNumber(long long_num,int poX, int poY, int size)
 ***************************************************************************************/
 int ESP8266_SSD1322::drawChar(char c, int x, int y, int size)
 {
-    return drawUnicode(c, x, y, size);
+//Serial.println("drawChar:E");
+#ifdef LOAD_GLCD
+  // Use Adafruit font 5x7
+  if (size == 0)
+  {
+     setCursor(x, y);
+     return  print(c);
+  }
+#endif
+  int retVal = drawUnicode(c, x, y, size);
+//Serial.println("drawChar:X");
+  return retVal;
 }
 
 /***************************************************************************************
@@ -1042,6 +1275,7 @@ int ESP8266_SSD1322::drawChar(char c, int x, int y, int size)
 ***************************************************************************************/
 int ESP8266_SSD1322::drawString(char *string, int poX, int poY, int size)
 {
+//Serial.println("drawString:E");
 #ifdef LOAD_GLCD
 	// Use Adafruit font 5x7
    if (size == 0)
@@ -1055,11 +1289,15 @@ int ESP8266_SSD1322::drawString(char *string, int poX, int poY, int size)
 
     while(*string)
     {
+//Serial.print("ds:poX");
+//Serial.println(poX);
         int xPlus = drawChar(*string, poX, poY, size);
         sumX += xPlus;
         *string++;
         poX += xPlus;                            /* Move cursor right       */
     }
+//Serial.print("drawString:x:");
+//Serial.println(sumX);
     return sumX;
 }
 
@@ -1104,6 +1342,9 @@ int ESP8266_SSD1322::drawCentreString(char *string, int dX, int poY, int size)
 #endif
 #ifdef LOAD_FONT7
         if (size==7) len += pgm_read_byte(widtbl_f7s+ascii-32)+2;
+#endif
+#ifdef LOAD_FONT8
+        if (size==8) len += pgm_read_byte(widtbl_F10+ascii-32)+gap_F10;
 #endif
         *pointer++;
     }
@@ -1153,6 +1394,9 @@ int ESP8266_SSD1322::drawRightString(char *string, int dX, int poY, int size)
 #endif
 #ifdef LOAD_FONT7
         if (size==7) len += pgm_read_byte(widtbl_f7s+ascii-32)+2;
+#endif
+#ifdef LOAD_FONT8
+        if (size==8) len += pgm_read_byte(widtbl_F10+ascii-32)+gap_F10;
 #endif
         *pointer++;
     }
