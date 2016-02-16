@@ -24,10 +24,12 @@ All text above, and the splash screen must be included in any redistribution
 #endif
 #include <stdlib.h>
 
-//#include <Wire.h>
-
 #include "Adafruit_GFX.h"
 #include "ESP8266_SSD1322.h"
+
+#ifndef _swap_int16_t
+#define _swap_int16_t(a, b) { int16_t t = a; a = b; b = t; }
+#endif
 
 #ifdef LOAD_GLCD
   #include "glcdfont.c"
@@ -67,7 +69,7 @@ void ESP8266_SSD1322::drawPixel(int16_t x, int16_t y, uint16_t gscale)
   switch (getRotation())
   {
     case 1:
-      swap(x, y);
+      _swap_int16_t(x, y);
       x = WIDTH - x - 1;
     break;
     case 2:
@@ -75,7 +77,7 @@ void ESP8266_SSD1322::drawPixel(int16_t x, int16_t y, uint16_t gscale)
       y = HEIGHT - y - 1;
     break;
     case 3:
-      swap(x, y);
+      _swap_int16_t(x, y);
       y = HEIGHT - y - 1;
     break;
   }
@@ -448,7 +450,7 @@ void ESP8266_SSD1322::drawFastHLine(int16_t x, int16_t y, int16_t w,
 	case 1:
 		// 90 degree rotation, swap x & y for rotation, then invert x
 		bSwap = true;
-		swap(x, y)
+		_swap_int16_t(x, y)
 		;
 		x = WIDTH - x - 1;
 		break;
@@ -461,7 +463,7 @@ void ESP8266_SSD1322::drawFastHLine(int16_t x, int16_t y, int16_t w,
 	case 3:
 		// 270 degree rotation, swap x & y for rotation, then invert y  and adjust y for w (not to become h)
 		bSwap = true;
-		swap(x, y)
+		_swap_int16_t(x, y)
 		;
 		y = HEIGHT - y - 1;
 		y -= (w - 1);
@@ -689,7 +691,7 @@ void ESP8266_SSD1322::drawFastVLine(int16_t x, int16_t y, int16_t h,
 	case 1:
 		// 90 degree rotation, swap x & y for rotation, then invert x and adjust x for h (now to become w)
 		bSwap = true;
-		swap(x, y)
+		_swap_int16_t(x, y)
 		;
 		x = WIDTH - x - 1;
 		x -= (h - 1);
@@ -703,7 +705,7 @@ void ESP8266_SSD1322::drawFastVLine(int16_t x, int16_t y, int16_t h,
 	case 3:
 		// 270 degree rotation, swap x & y for rotation, then invert y
 		bSwap = true;
-		swap(x, y)
+		_swap_int16_t(x, y)
 		;
 		y = HEIGHT - y - 1;
 		break;
