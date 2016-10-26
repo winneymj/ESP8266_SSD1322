@@ -1,10 +1,14 @@
 /**
-* This is an example for the Newhaven NHD-3.12-25664UCY2 OLED based on SSD1322 drivers
-* The NHD-3.12-25664UCY2 is sold through Digikey and Mouser
-*
-* Based on Adafruit SSD1306 driver (https://github.com/adafruit/Adafruit_SSD1306)
-*   for which the original header is left below:
-*/
+ * This is an example for the Newhaven NHD-3.12-25664UCY2 OLED based on SSD1322 drivers
+ * The NHD-3.12-25664UCY2 is sold through Digikey and Mouser
+ *
+ * Details in
+ *   data sheet (http://www.newhavendisplay.com/specs/NHD-3.12-25664UCY2.pdf)
+ *   app note (http://www.newhavendisplay.com/app_notes/SSD1322.pdf)
+ *
+ * Based on Adafruit SSD1306 driver (https://github.com/adafruit/Adafruit_SSD1306)
+ *   for which the original header is left below:
+ */
 
 /*********************************************************************
 This is a library for the 256 x 64 pixel 16 color gray scale OLEDs
