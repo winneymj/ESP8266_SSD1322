@@ -24,15 +24,15 @@ Changes compared to [ESP8266_SSD1322](https://github.com/winneymj/ESP8266_SSD132
 
 OLED	        | Arduino 101
 -------------+--------------------
-#1 (Vss)	    | GND
-#2 (Vdd)     |	3V3 (up to 271 mA, use external power supply to Arduino 101)
-#4 (D/!C)    |	D9
-#7 (SCLK)	   | D13 (hardware SPI SCLK)
-#8 (SDIN)	   | D11 (hardware SPI MOSI)
-#16 (!RESET)	| !RESET
-#17 (!CS)	   | D10
-#5,#6,#10-14,#19,#20	| GND
-#3, #9, #15, #18	    | not connected
+ #1 (Vss)	    | GND
+ #2 (Vdd)     |	3V3 (up to 271 mA, use external power supply to Arduino 101)
+ #4 (D/!C)    |	D9
+ #7 (SCLK)	   | D13 (hardware SPI SCLK)
+ #8 (SDIN)	   | D11 (hardware SPI MOSI)
+ #16 (!RESET)	| !RESET
+ #17 (!CS)	   | D10
+ #5,#6,#10-14,#19,#20	| GND
+ #3, #9, #15, #18	    | not connected
 
 Tested and passed on Arduino 101. I like this display, and being able to use the Adafruit GFX primitives is even better!
 
