@@ -1,3 +1,25 @@
+/**
+ * This is an example for the Newhaven NHD-3.12-25664UCY2 OLED based on SSD1322 drivers
+ * The NHD-3.12-25664UCY2 is sold through Digikey and Mouser
+ *
+ * Following hardware connections are assumed
+ *
+ *   OLED                   Arduino 101
+ *   ---------------------+------------------------------------------------------------------
+ *   #1 Vss/GND             GND
+ *   #2 Vdd                 3V3 (up to 271 mA, use external power supply to feed Arduino 101)
+ *   #4 D/!C                D9
+ *   #7 SCLK                D13 (hardware SPI SCLK)
+ *   #8 SDIN                D11 (hardware SPI MOSI)
+ *   #16 !RESET             !RESET
+ *   #17 !CS                D10
+ *   #5,#6,#10-14,#19,#20   GND
+ *   #3,#9,#15,#18          not connected
+ *
+ * Based on Adafruit SSD1306 driver (https://github.com/adafruit/Adafruit_SSD1306)
+ *   for which the original header is left below:
+ */
+
 /*********************************************************************
 This is a library for the 256 x 64 pixel 16 color gray scale OLEDs
 based on SSD1322 drivers
@@ -19,9 +41,14 @@ All text above, and the splash screen must be included in any redistribution
 #include <ESP8266_SSD1322.h>
 
 //ESP8266 Pins
-#define OLED_CS     15  // Pin 19, CS - Chip select
-#define OLED_DC     2   // Pin 20 - DC digital signal
-#define OLED_RESET  16  // Pin 15 -RESET digital signal
+//#define OLED_CS     15  // Pin 19, CS - Chip select
+//#define OLED_DC     2   // Pin 20 - DC digital signal
+//#define OLED_RESET  16  // Pin 15 -RESET digital signal
+
+//Arduino_101 Pins
+#define OLED_CS     10  // Pin 10, CS - Chip select
+#define OLED_DC     9   // Pin 9 - DC digital signal
+#define OLED_RESET  0   // using hardware !RESET from Arduino instead
 
 // ATMega32u4 pins
 //#define OLED_DC    8 //  D8  - B4

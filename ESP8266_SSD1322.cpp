@@ -1,3 +1,15 @@
+/**
+ * This is an example for the Newhaven NHD-3.12-25664UCY2 OLED based on SSD1322 drivers
+ * The NHD-3.12-25664UCY2 is sold through Digikey and Mouser
+ *
+ * Details in
+ *   data sheet (http://www.newhavendisplay.com/specs/NHD-3.12-25664UCY2.pdf)
+ *   app note (http://www.newhavendisplay.com/app_notes/SSD1322.pdf)
+ *
+ * Based on Adafruit SSD1306 driver (https://github.com/adafruit/Adafruit_SSD1306)
+ *   for which the original header is left below:
+ */
+
 /*********************************************************************
 This is a library for the 256 x 64 pixel 16 color gray scale OLEDs
 based on SSD1322 drivers
@@ -17,10 +29,8 @@ All text above, and the splash screen must be included in any redistribution
 #ifndef ESP8266    					//Added for compatibility with ESP8266 board
 #include <avr/pgmspace.h>
 #endif
-#ifndef __SAM3X8E__
-#ifndef ESP8266    					//Added for compatibility with ESP8266 board
+#if !defined(__SAM3X8E__) &&  !defined(ESP8266) && !defined(ARDUINO_ARCH_ARC32)
 #include <util/delay.h>
-#endif
 #endif
 #include <stdlib.h>
 
@@ -153,7 +163,7 @@ void ESP8266_SSD1322::begin(uint8_t i2caddr, bool reset) {
 		}
 	}
 
-	if (reset)
+	if (reset && rst)
 	{
 		// Setup reset pin direction (used by both SPI and I2C)
 		pinMode(rst, OUTPUT);
@@ -362,7 +372,7 @@ void ESP8266_SSD1322::ssd1322_dataBytes(uint8_t *buf, uint32_t size) {
 		digitalWrite(cs, HIGH);
 		digitalWrite(dc, HIGH);
 		digitalWrite(cs, LOW);
-		SPI.writeBytes(buf, size);
+		fastSPIwriteBytes(buf, size);
 		digitalWrite(cs, HIGH);
 	}
 }
@@ -438,6 +448,17 @@ inline void ESP8266_SSD1322::fastSPIwrite(uint8_t d) {
 		}
 	}
 	//*csport |= cspinmask;
+}
+
+inline void ESP8266_SSD1322::fastSPIwriteBytes(uint8_t * data, uint32_t const size) {
+
+#ifdef ESP8266
+	SPI.writeBytes(data, size);
+#else
+	for (uint32_t ii = 0; ii < size; ii++) {
+		SPI.transfer(data[ii]);
+	}
+#endif
 }
 
 void ESP8266_SSD1322::drawFastHLine(int16_t x, int16_t y, int16_t w,
@@ -892,7 +913,6 @@ void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap
     // loop the height
     for (int lh = 0; lh < hInRows; lh++)
     {
-      bool rowTerminated = false;
       register uint8_t shftedOut = 0;
 
       // loop the width
@@ -1031,7 +1051,6 @@ void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap
       // loop the height
       for (int lh = 0; lh < hInRows; lh++)
       {
-	bool offScreen = false;
 	// loop the width
 	for (int lw = 0; lw < wInBytes; lw++)
 	{
@@ -1119,8 +1138,8 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
 
    uint8_t width = 0;
    uint8_t height = 0;
-   uint32_t flash_address;
-   int8 gap = 0;
+   uint32_t flash_address = 0;
+   int8_t gap = 0;
 
 //   if (size == 1) {
 //     flash_address = pgm_read_word(&chrtbl_f8[uniCode]);
@@ -1128,9 +1147,13 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
 //     height = chr_hgt_f8;
 //     gap = 1;
 //   }
+
+// in calls to pgm_read_dword(), compiler will warn about strict-aliasing,
+// 'cause chrtbl_* are uint8_t[] instead of uint32_t[]
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+
 #ifdef LOAD_FONT2
-
-
    if (size == 2) {
 	 flash_address = pgm_read_dword(&chrtbl_f16[uniCode]);
      width = pgm_read_byte(widtbl_f16+uniCode);
@@ -1182,11 +1205,15 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
      gap = gap_F10;
    }
 #endif
+#pragma GCC diagnostic pop
+
+   if (!flash_address) {
+	   return 0;
+   }
 
 	int w = (width+7)/8;
 	register int pX      = 0;
 	register int pY      = y;
-	int color   = 0;
 	byte line = 0;
 
 	for(register int i=0; i<height; i++)
@@ -1295,7 +1322,7 @@ int ESP8266_SSD1322::drawString(char *string, int poX, int poY, int size)
 //Serial.println(poX);
         int xPlus = drawChar(*string, poX, poY, size);
         sumX += xPlus;
-        *string++;
+        string++;
         poX += xPlus;                            /* Move cursor right       */
     }
 //Serial.print("drawString:x:");
@@ -1348,7 +1375,7 @@ int ESP8266_SSD1322::drawCentreString(char *string, int dX, int poY, int size)
 #ifdef LOAD_FONT8
         if (size==8) len += pgm_read_byte(widtbl_F10+ascii-32)+gap_F10;
 #endif
-        *pointer++;
+        pointer++;
     }
     len = len*textsize;
     int poX = dX - len/2;
@@ -1360,7 +1387,7 @@ int ESP8266_SSD1322::drawCentreString(char *string, int dX, int poY, int size)
 
         int xPlus = drawChar(*string, poX, poY, size);
         sumX += xPlus;
-        *string++;
+        string++;
         poX += xPlus;                  /* Move cursor right            */
     }
 
@@ -1400,7 +1427,7 @@ int ESP8266_SSD1322::drawRightString(char *string, int dX, int poY, int size)
 #ifdef LOAD_FONT8
         if (size==8) len += pgm_read_byte(widtbl_F10+ascii-32)+gap_F10;
 #endif
-        *pointer++;
+        pointer++;
     }
 
     len = len*textsize;
@@ -1413,7 +1440,7 @@ int ESP8266_SSD1322::drawRightString(char *string, int dX, int poY, int size)
 
         int xPlus = drawChar(*string, poX, poY, size);
         sumX += xPlus;
-        *string++;
+        string++;
         poX += xPlus;          /* Move cursor right            */
     }
 

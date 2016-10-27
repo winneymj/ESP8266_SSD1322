@@ -1,3 +1,11 @@
+/**
+ * This is an example for the Newhaven NHD-3.12-25664UCY2 OLED based on SSD1322 drivers
+ * The NHD-3.12-25664UCY2 is sold through Digikey and Mouser
+ *
+ * Based on Adafruit SSD1306 driver (https://github.com/adafruit/Adafruit_SSD1306)
+ *   for which the original header is left below:
+ */
+
 /*********************************************************************
 This is a library for the 256 x 64 pixel 16 color gray scale OLEDs
 based on SSD1322 drivers
@@ -26,9 +34,12 @@ All text above, and the splash screen must be included in any redistribution
   #define WIRE_WRITE Wire.send
 #endif
 
-#ifdef __SAM3X8E__
+#if defined(__SAM3X8E__)
  typedef volatile RwReg PortReg;
  typedef uint32_t PortMask;
+#elif defined(ARDUINO_ARCH_ARC32)
+  typedef volatile uint32_t PortReg;
+  typedef uint32_t PortMask;
 #else
   typedef volatile uint8_t PortReg;
   typedef uint8_t PortMask;
@@ -159,6 +170,7 @@ class ESP8266_SSD1322 : public Adafruit_GFX {
  private:
   int8_t _i2caddr, sid, sclk, dc, rst, cs;
   void fastSPIwrite(uint8_t c);
+  void fastSPIwriteBytes(uint8_t * data, uint32_t const size);
 
   boolean hwSPI;
   PortReg *mosiport, *clkport, *csport, *dcport;
