@@ -930,14 +930,14 @@ void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap
 //Serial.println(bytePos);
 
 	  // Get byte from bitmap to display
-	  bmap = pgm_read_byte(bitmap + bytePos++);
+	  bmap = pgm_read_byte((uint8_t *)bitmap + bytePos++);
 	  // Shift the byte to display at correct x position.
 	  mask = bmap << mod;
 
 	  if (lw != (wInBytes - 1))
 	  {
 //Serial.println("dont do last");
-	    bmap = pgm_read_byte(bitmap + bytePos); // Get next byte in image
+	    bmap = pgm_read_byte((uint8_t *)bitmap + bytePos); // Get next byte in image
 	    shftedOut = bmap >> (8-mod);
 	    // Move in the bytes from the shifted out of previous
 	    mask |= shftedOut;
@@ -979,7 +979,7 @@ void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap
 //Serial.println(bytePos);
 
 	  // Get byte from bitmap to display
-	  bmap = pgm_read_byte(bitmap + bytePos++);
+	  bmap = pgm_read_byte((uint8_t *)bitmap + bytePos++);
 	  // Shift the byte to display at correct x position.
 	  mask = bmap >> mod;
 	  // Move in the bytes from the shifted out of previous
@@ -1066,7 +1066,7 @@ void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap
 //Serial.print("bytePos=");
 //Serial.println(bytePos);
 
-	    *pBuf++ = pgm_read_byte(bitmap + bytePos++);
+	    *pBuf++ = pgm_read_byte((uint8_t *)bitmap + bytePos++);
 	  }
 	  else
 	  {
@@ -1119,7 +1119,7 @@ void ESP8266_SSD1322::fastDrawBitmap(int16_t x, int16_t y, const uint8_t *bitmap
     // loop the width
     for (int lw = 0; lw < wInBytes; lw++)
     {
-      *pBuf++ = pgm_read_byte(bitmap + bitPos++);
+      *pBuf++ = pgm_read_byte((uint8_t *)bitmap + bitPos++);
     }
 
     pBuf += (SSD1322_LCDWIDTH / 2) - wInBytes; // Move buffer position to next row
@@ -1143,7 +1143,7 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
 
 //   if (size == 1) {
 //     flash_address = pgm_read_word(&chrtbl_f8[uniCode]);
-//     width = pgm_read_byte(widtbl_f8+uniCode);
+//     width = pgm_read_byte((uint8_t *)widtbl_f8+uniCode);
 //     height = chr_hgt_f8;
 //     gap = 1;
 //   }
@@ -1156,35 +1156,35 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
 #ifdef LOAD_FONT2
    if (size == 2) {
 	 flash_address = pgm_read_dword(&chrtbl_f16[uniCode]);
-     width = pgm_read_byte(widtbl_f16+uniCode);
+     width = pgm_read_byte((uint8_t *)widtbl_f16+uniCode);
      height = chr_hgt_f16;
      gap = 1;
    }
 #endif
 //   if (size == 3) {
 //     flash_address = pgm_read_word(&chrtbl_f24[uniCode]);
-//     width = pgm_read_byte(widtbl_f24+uniCode);
+//     width = pgm_read_byte((uint8_t *)widtbl_f24+uniCode);
 //     height = chr_hgt_f24;
 //     gap = 0;
 //   }
 #ifdef LOAD_FONT4
    if (size == 4) {
      flash_address = pgm_read_dword(&chrtbl_f32[uniCode]);
-     width = pgm_read_byte(widtbl_f32+uniCode);
+     width = pgm_read_byte((uint8_t *)widtbl_f32+uniCode);
      height = chr_hgt_f32;
      gap = -3;
    }
 #endif
 //   if (size == 5) {
 //     flash_address = pgm_read_word(&chrtbl_f48[uniCode]);
-//     width = pgm_read_byte(widtbl_f48+uniCode);
+//     width = pgm_read_byte((uint8_t *)widtbl_f48+uniCode);
 //     height = chr_hgt_f48;
 //     gap = -3;
 //   }
 #ifdef LOAD_FONT6
    if (size == 6) {
      flash_address = pgm_read_dword(&chrtbl_f64[uniCode]);
-     width = pgm_read_byte(widtbl_f64+uniCode);
+     width = pgm_read_byte((uint8_t *)widtbl_f64+uniCode);
      height = chr_hgt_f64;
      gap = -3;
    }
@@ -1192,7 +1192,7 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
 #ifdef LOAD_FONT7
    if (size == 7) {
      flash_address = pgm_read_dword(&chrtbl_f7s[uniCode]);
-     width = pgm_read_byte(widtbl_f7s+uniCode);
+     width = pgm_read_byte((uint8_t *)widtbl_f7s+uniCode);
      height = chr_hgt_f7s;
      gap = 2;
    }
@@ -1200,7 +1200,7 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
 #ifdef LOAD_FONT8
    if (size == 8) {
      flash_address = pgm_read_dword(&chrtbl_F10[uniCode]);
-     width = pgm_read_byte(widtbl_F10+uniCode);
+     width = pgm_read_byte((uint8_t *)widtbl_F10+uniCode);
      height = chr_hgt_F10;
      gap = gap_F10;
    }
@@ -1231,7 +1231,7 @@ int ESP8266_SSD1322::drawUnicode(unsigned int uniCode, int x, int y, int size)
 	  }
 	  for (register int k = 0;k < w; k++)
 	  {
-		line = pgm_read_byte(flash_address+w*i+k);
+		line = pgm_read_byte((uint8_t *)flash_address+w*i+k);
 		if(line)
 		{
 		  if (textsize==1){
@@ -1356,24 +1356,24 @@ int ESP8266_SSD1322::drawCentreString(char *string, int dX, int poY, int size)
     while(*pointer)
     {
         ascii = *pointer;
-        //if (size==0)len += 1+pgm_read_byte(widtbl_log+ascii);
-        //if (size==1)len += 1+pgm_read_byte(widtbl_f8+ascii-32);
+        //if (size==0)len += 1+pgm_read_byte((uint8_t *)widtbl_log+ascii);
+        //if (size==1)len += 1+pgm_read_byte((uint8_t *)widtbl_f8+ascii-32);
 #ifdef LOAD_FONT2
-        if (size==2)len += 1+pgm_read_byte(widtbl_f16+ascii-32);
+        if (size==2)len += 1+pgm_read_byte((uint8_t *)widtbl_f16+ascii-32);
 #endif
-        //if (size==3)len += 1+pgm_read_byte(widtbl_f48+ascii-32)/2;
+        //if (size==3)len += 1+pgm_read_byte((uint8_t *)widtbl_f48+ascii-32)/2;
 #ifdef LOAD_FONT4
-        if (size==4)len += pgm_read_byte(widtbl_f32+ascii-32)-3;
+        if (size==4)len += pgm_read_byte((uint8_t *)widtbl_f32+ascii-32)-3;
 #endif
-        //if (size==5) len += pgm_read_byte(widtbl_f48+ascii-32)-3;
+        //if (size==5) len += pgm_read_byte((uint8_t *)widtbl_f48+ascii-32)-3;
 #ifdef LOAD_FONT6
-        if (size==6) len += pgm_read_byte(widtbl_f64+ascii-32)-3;
+        if (size==6) len += pgm_read_byte((uint8_t *)widtbl_f64+ascii-32)-3;
 #endif
 #ifdef LOAD_FONT7
-        if (size==7) len += pgm_read_byte(widtbl_f7s+ascii-32)+2;
+        if (size==7) len += pgm_read_byte((uint8_t *)widtbl_f7s+ascii-32)+2;
 #endif
 #ifdef LOAD_FONT8
-        if (size==8) len += pgm_read_byte(widtbl_F10+ascii-32)+gap_F10;
+        if (size==8) len += pgm_read_byte((uint8_t *)widtbl_F10+ascii-32)+gap_F10;
 #endif
         pointer++;
     }
@@ -1408,24 +1408,24 @@ int ESP8266_SSD1322::drawRightString(char *string, int dX, int poY, int size)
     while(*pointer)
     {
         ascii = *pointer;
-        //if (size==0)len += 1+pgm_read_byte(widtbl_log+ascii);
-        //if (size==1)len += 1+pgm_read_byte(widtbl_f8+ascii-32);
+        //if (size==0)len += 1+pgm_read_byte((uint8_t *)widtbl_log+ascii);
+        //if (size==1)len += 1+pgm_read_byte((uint8_t *)widtbl_f8+ascii-32);
 #ifdef LOAD_FONT2
-        if (size==2)len += 1+pgm_read_byte(widtbl_f16+ascii-32);
+        if (size==2)len += 1+pgm_read_byte((uint8_t *)widtbl_f16+ascii-32);
 #endif
-        //if (size==3)len += 1+pgm_read_byte(widtbl_f48+ascii-32)/2;
+        //if (size==3)len += 1+pgm_read_byte((uint8_t *)widtbl_f48+ascii-32)/2;
 #ifdef LOAD_FONT4
-        if (size==4)len += pgm_read_byte(widtbl_f32+ascii-32)-3;
+        if (size==4)len += pgm_read_byte((uint8_t *)widtbl_f32+ascii-32)-3;
 #endif
-        //if (size==5) len += pgm_read_byte(widtbl_f48+ascii-32)-3;
+        //if (size==5) len += pgm_read_byte((uint8_t *)widtbl_f48+ascii-32)-3;
 #ifdef LOAD_FONT6
-        if (size==6) len += pgm_read_byte(widtbl_f64+ascii-32)-3;
+        if (size==6) len += pgm_read_byte((uint8_t *)widtbl_f64+ascii-32)-3;
 #endif
 #ifdef LOAD_FONT7
-        if (size==7) len += pgm_read_byte(widtbl_f7s+ascii-32)+2;
+        if (size==7) len += pgm_read_byte((uint8_t *)widtbl_f7s+ascii-32)+2;
 #endif
 #ifdef LOAD_FONT8
-        if (size==8) len += pgm_read_byte(widtbl_F10+ascii-32)+gap_F10;
+        if (size==8) len += pgm_read_byte((uint8_t *)widtbl_F10+ascii-32)+gap_F10;
 #endif
         pointer++;
     }
@@ -1513,7 +1513,7 @@ int ESP8266_SSD1322::drawFloat(float floatNumber, int decimal, int poX, int poY,
 
 inline static byte readPixels(const byte* loc, bool invert)
 {
-	byte pixels = pgm_read_byte(loc);
+	byte pixels = pgm_read_byte((uint8_t *)loc);
 	if(invert)
 	pixels = ~pixels;
 	return pixels;
