@@ -128,7 +128,7 @@ All text above, and the splash screen must be included in any redistribution
 class ESP8266_SSD1322 : public Adafruit_GFX {
  public:
   ESP8266_SSD1322(int8_t SID, int8_t SCLK, int8_t DC, int8_t RST, int8_t CS);
-  ESP8266_SSD1322(int8_t DC, int8_t RST, int8_t CS);
+  ESP8266_SSD1322(int8_t SID, int8_t SDA, int8_t SCLK, int8_t DC, int8_t RST, int8_t CS);
   ESP8266_SSD1322(int8_t RST);
 
   void begin(uint8_t i2caddr = SSD1322_I2C_ADDRESS, bool reset=true);
@@ -168,7 +168,7 @@ class ESP8266_SSD1322 : public Adafruit_GFX {
   int drawFloat(float floatNumber,int decimal,int poX, int poY, int size);
 
  private:
-  int8_t _i2caddr, sid, sclk, dc, rst, cs;
+  int8_t _i2caddr, sid, sda, sclk, dc, rst, cs;
   void fastSPIwrite(uint8_t c);
   void fastSPIwriteBytes(uint8_t * data, uint32_t const size);
 
