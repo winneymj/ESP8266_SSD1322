@@ -1,0 +1,30 @@
+{
+  "name": "ESP8266 SSD1322",
+  "version": "1.0.6",
+  "description": "SSD1322 oled driver library for 'monochrome' 128x64 and 128x32 OLEDs!",
+  "keywords": "oled",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/StegoPhone/ESP8266_SSD1322.git"
+  },
+  "authors":
+  [
+    {
+      "name": "Jessica Mulein",
+      "email": "jessica@mulein.com"
+    },
+    {
+      "name": "Bagaloozy",
+      "email": "winneymj@gmail.com",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/winneymj/ESP8266_SSD1322/blob/master/LICENSE",
+  "dependencies": {
+    "jessicamulein/SPI": "~1.0"
+  },
+  "frameworks": "*",
+  "platforms": "*"
+}
