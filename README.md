@@ -3,6 +3,8 @@
 
 The [Adafruit GFX](https://github.com/adafruit/Adafruit-GFX-Library) introduces graphics primitives (points, lines, circles, etc.). This library add support for the [Newhaven NHD-3.12-25664UCY2](http://www.newhavendisplay.com/nhd31225664ucy2-p-3537.html) 256x64x16 Yellow OLED Display.  The driver supports 4-wire SPI mode.
 
+!! Do not use a version of the Adadfruit GFX library newer then v1.5.3 !!
+
 This repository was forked from [ESP8266_SSD1322](https://github.com/winneymj/ESP8266_SSD1322) that in turn was based on [Adafruit SSD1306](https://github.com/adafruit/Adafruit_SSD1306).
 
 ### Introducing support for Arduino 101
